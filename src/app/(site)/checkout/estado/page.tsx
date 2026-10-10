@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, Clock, XCircle, Smartphone } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, Smartphone, FileCheck2 } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSettings } from "@/lib/settings";
@@ -10,6 +10,8 @@ import { formatDateTime, PAYMENT_STATUS_LABEL } from "@/lib/format";
 import type { Payment } from "@/lib/types";
 import { ButtonLink } from "@/components/ui/Button";
 import { ReportForm } from "./ReportForm";
+import { ProofForm } from "./ProofForm";
+import { formatBytes } from "@/lib/payments/proof";
 import { AutoRefresh } from "./AutoRefresh";
 import { CopyButton } from "./CopyButton";
 import { cancelOrderAction } from "../actions";
@@ -75,9 +77,23 @@ export default async function PaymentStatusPage({ searchParams }: { searchParams
               <li>Abra a aplicação Multicaixa Express.</li>
               <li>Envie exatamente {formatKz(payment.amount_minor)} para o número indicado.</li>
               <li>Na descrição/mensagem, escreva a referência <strong className="text-paper">{payment.reference}</strong>.</li>
-              <li>Guarde o comprovativo e indique abaixo o identificador da transação.</li>
+              <li>Envie abaixo o comprovativo (PNG, JPG ou PDF) e, se tiver, o identificador da transação.</li>
             </ol>
             {s.payment.instructions && <p className="mt-4 whitespace-pre-line text-sm text-mute">{s.payment.instructions}</p>}
+          </div>
+
+          <div className="glass glass-sheen mt-5 p-6 sm:p-8">
+            {payment.proof_uploaded_at && (
+              <div className="mb-6 flex items-start gap-3 rounded-xl border border-ok/25 bg-ok/[0.06] p-4 text-sm text-paper/85" role="status">
+                <FileCheck2 className="mt-0.5 h-5 w-5 shrink-0 text-ok" strokeWidth={1.5} />
+                <p>
+                  Comprovativo recebido em {formatDateTime(payment.proof_uploaded_at)}
+                  {payment.proof_size ? ` (${payment.proof_mime === "application/pdf" ? "PDF" : "imagem"}, ${formatBytes(payment.proof_size)})` : ""}. A equipa AUREA vai
+                  verificá-lo e esta página atualiza automaticamente.
+                </p>
+              </div>
+            )}
+            <ProofForm key={payment.proof_uploaded_at ?? "none"} reference={payment.reference} replacing={!!payment.proof_uploaded_at} />
           </div>
 
           <div className="glass mt-5 p-6 sm:p-8">
@@ -90,7 +106,7 @@ export default async function PaymentStatusPage({ searchParams }: { searchParams
               <ReportForm reference={payment.reference} />
             )}
             <p className="mt-4 text-xs leading-relaxed text-mute">
-              Modo de verificação manual: o acesso é ativado apenas quando a equipa AUREA confirmar a receção do valor. Indicar os dados do comprovativo não ativa a assinatura por si só.
+              Modo de verificação manual: o acesso é ativado apenas quando a equipa AUREA confirmar a receção do valor. Enviar o comprovativo ou o identificador não ativa a assinatura por si só.
             </p>
           </div>
 

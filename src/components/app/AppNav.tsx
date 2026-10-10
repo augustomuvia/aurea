@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Heart, History, Home, Library, LogOut, Settings, Shield, UserRound } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { logoutAction } from "@/app/(site)/(auth)/actions";
+import { HeaderSearch } from "./HeaderSearch";
 
 const MAIN = [
   { href: "/app", label: "Início", icon: Home, exact: true },
@@ -36,6 +37,7 @@ export function AppNav({ name, isAdmin }: { name: string; isAdmin: boolean }) {
             ))}
           </ul>
           <div className="flex items-center gap-1">
+            <HeaderSearch />
             {isAdmin && (
               <Link href="/admin" className="press grid h-10 w-10 place-items-center rounded-full text-gold hover:bg-white/[0.06]" aria-label="Painel administrativo" title="Painel administrativo">
                 <Shield className="h-4.5 w-4.5" />

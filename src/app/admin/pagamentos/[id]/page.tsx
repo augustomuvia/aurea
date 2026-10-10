@@ -9,6 +9,8 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { formatKz } from "@/lib/pricing";
 import { formatDateTime, PAYMENT_STATUS_LABEL } from "@/lib/format";
 import type { Payment } from "@/lib/types";
+import { FileText, ExternalLink } from "lucide-react";
+import { formatBytes, PROOF_BUCKET } from "@/lib/payments/proof";
 import { confirmPaymentAction, rejectPaymentAction, reversePaymentAction } from "../../actions";
 
 export const metadata = { title: "Pagamento" };
@@ -24,6 +26,9 @@ export default async function AdminPaymentDetail({ params }: { params: Promise<{
   ]);
   const p = data as (Payment & { confirmed_by: string | null }) | null;
   if (!p) notFound();
+  // Link temporário (10 min) para o ficheiro no bucket privado; nunca é público.
+  const proofUrl = p.proof_path ? (await svc.storage.from(PROOF_BUCKET).createSignedUrl(p.proof_path, 600)).data?.signedUrl ?? null : null;
+  const proofIsPdf = p.proof_mime === "application/pdf";
 
   return (
     <>
@@ -45,6 +50,37 @@ export default async function AdminPaymentDetail({ params }: { params: Promise<{
             <Dt label="Transação confirmada">{p.provider_transaction_id ?? "—"}</Dt>
             <Dt label="Origem">{p.provider === "partner" ? "Parceiro (webhook)" : "Verificação manual"}</Dt>
           </dl>
+          <div className="mt-6 border-t border-white/[0.07] pt-5">
+            <h2 className="text-[0.7rem] uppercase tracking-[0.14em] text-mute">Comprovativo enviado pelo cliente</h2>
+            {!p.proof_path ? (
+              <p className="mt-2 text-sm text-mute">O cliente ainda não enviou comprovativo.</p>
+            ) : !proofUrl ? (
+              <p className="mt-2 text-sm text-danger">Não foi possível abrir o ficheiro. Verifique o bucket “{PROOF_BUCKET}” no Supabase Storage.</p>
+            ) : (
+              <div className="mt-3 space-y-3">
+                {!proofIsPdf && (
+                  <a href={proofUrl} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border border-white/10 bg-black/40">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- URL assinado e temporário do Storage privado */}
+                    <img src={proofUrl} alt={`Comprovativo do pedido ${p.reference}`} className="max-h-[28rem] w-full object-contain" />
+                  </a>
+                )}
+                <a
+                  href={proofUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="press glass inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm text-paper"
+                >
+                  {proofIsPdf ? <FileText className="h-4 w-4 text-gold" /> : <ExternalLink className="h-4 w-4 text-gold" />}
+                  {proofIsPdf ? "Abrir PDF do comprovativo" : "Abrir imagem em tamanho real"}
+                </a>
+                <p className="text-xs text-mute">
+                  {proofIsPdf ? "PDF" : p.proof_mime === "image/png" ? "PNG" : "JPG"}
+                  {p.proof_size ? ` · ${formatBytes(p.proof_size)}` : ""} · enviado em {formatDateTime(p.proof_uploaded_at)} · o link expira em 10 minutos.
+                </p>
+                <p className="text-xs text-amber-100/80">Um comprovativo pode ser falsificado: confirme sempre a receção do valor no extrato Multicaixa Express antes de ativar.</p>
+              </div>
+            )}
+          </div>
           {p.customer_note && <p className="mt-5 rounded-xl bg-white/[0.03] p-3 text-sm text-paper/75">Nota do cliente: {p.customer_note}</p>}
           {p.verification_evidence && <p className="mt-3 text-sm text-mute">Evidência: {p.verification_evidence}</p>}
           {p.rejected_reason && <p className="mt-3 text-sm text-danger">Motivo: {p.rejected_reason}</p>}

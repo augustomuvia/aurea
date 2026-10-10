@@ -24,10 +24,10 @@ export function Filters({ categories, values, action = "/app/biblioteca", hideCa
           type="search"
           defaultValue={values.q}
           maxLength={60}
-          placeholder="Pesquisar por título, categoria ou etiqueta"
+          placeholder="Pesquisar sons, frequências, categorias…"
           className="glass h-13 w-full rounded-full pl-11 pr-28 text-[0.95rem] text-paper placeholder:text-mute/80 focus:border-gold/50 focus:outline-none"
         />
-        <button type="submit" className="press absolute right-1.5 top-1/2 h-10 -translate-y-1/2 rounded-full bg-white/[0.08] px-5 text-sm text-paper hover:bg-white/[0.12]">
+        <button type="submit" className="press absolute right-1.5 top-1/2 h-10 -translate-y-1/2 rounded-full bg-gold px-5 text-sm font-medium text-ink hover:bg-gold-light">
           Pesquisar
         </button>
       </div>

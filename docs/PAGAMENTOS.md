@@ -7,12 +7,14 @@ O único método apresentado ao cliente é **Multicaixa Express**. Não existem 
 1. O cliente escolhe um plano (`/checkout/[plano]`).
 2. O servidor chama `create_payment_order`: valor e duração vêm da tabela `plans`; é gerada uma referência única `AUR-XXXXXXXX`. Pedidos pendentes recentes do mesmo plano são reutilizados (sem duplicados).
 3. `/checkout/estado?ref=…` mostra valor exato, referência e o número Multicaixa Express do destinatário (configurado em **Admin → Configurações → Pagamentos**).
-4. O cliente paga na app Multicaixa Express, com a referência na descrição, e indica o identificador da transação do comprovativo (`report_payment`). **Isto não ativa nada.**
+4. O cliente paga na app Multicaixa Express, com a referência na descrição, e envia o **comprovativo** (PNG, JPG ou PDF, até 4 MB) e/ou o identificador da transação (`report_payment`). **Nada disto ativa a assinatura.**
+   - O ficheiro é validado no servidor pelo conteúdo (assinatura do formato, não pela extensão), guardado no bucket **privado** `payment-proofs` do Supabase Storage (`<user_id>/<referência>-<aleatório>.<ext>`) e associado ao pedido por `attach_payment_proof` (só `service_role`, só pedidos pendentes, evento `proof_uploaded`). O cliente pode substituí-lo enquanto o pedido estiver pendente.
+   - O super admin vê o comprovativo em **Admin → Pagamentos → [referência]** através de um link assinado que expira em 10 minutos. Um comprovativo pode ser falsificado: confirme sempre a receção no extrato antes de ativar.
 5. Confirmação:
    - **Modo provisório (`PAYMENT_MODE=manual_review`, atual)**: o super admin verifica a receção no extrato/notificação bancária e confirma em **Admin → Pagamentos → [referência]**, indicando o identificador verificado e a evidência (texto obrigatório, mínimo 10 caracteres, e caixa “verifiquei a receção”). Fica auditado.
    - **Modo parceiro (`PAYMENT_MODE=partner`)**: o parceiro chama `POST /api/payments/webhook/partner`; a assinatura é verificada e a notificação normalizada segue para a mesma função.
 6. `confirm_payment` (SQL, atómico): bloqueia o pedido, recusa referência inexistente, valor diferente, transação já usada, pedido não pendente e eventos duplicados; ativa/estende a assinatura (`subscription_periods`), regista `payment_events`, cria notificação e, se configurado, envia e-mail.
-7. Expiração: o acesso é negado em tempo real quando `expires_at` passa; o cron horário (`/api/cron/expire`) sincroniza estados e expira pedidos pendentes com mais de 7 dias.
+7. Expiração: o acesso é negado em tempo real quando `expires_at` passa; o cron diário (`/api/cron/expire`) sincroniza estados e expira pedidos pendentes com mais de 7 dias.
 
 Não há renovação automática nem cobranças recorrentes.
 

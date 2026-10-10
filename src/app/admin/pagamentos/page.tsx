@@ -78,7 +78,9 @@ export default async function AdminPayments({ searchParams }: { searchParams: Pr
             <td className={`${td} tabular-nums`}>{formatKz(p.amount_minor)}</td>
             <td className={td}><Badge tone={TONE[p.status]}>{PAYMENT_STATUS_LABEL[p.status]}</Badge></td>
             <td className={`${td} text-mute`}>{formatDateTime(p.created_at)}</td>
-            <td className={`${td} text-mute`}>{p.customer_reported_transaction_id ?? "—"}</td>
+            <td className={`${td} text-mute`}>
+              {p.proof_path && <Badge tone="ok">Ficheiro</Badge>} {p.customer_reported_transaction_id ?? (p.proof_path ? "" : "—")}
+            </td>
           </tr>
         ))}
       </Table>

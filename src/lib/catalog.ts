@@ -80,7 +80,15 @@ export async function listContent(filters: CatalogFilters = {}): Promise<Catalog
     const q = sanitizeQuery(filters.q);
     if (q) {
       const tag = q.toLowerCase().replace(/\s+/g, "-");
-      query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%,tags.cs.{${tag}}`);
+      // Também encontra conteúdos pelo nome da categoria (ex.: "sono", "foco").
+      const { data: cats } = await supabase.from("categories").select("id").ilike("name", `%${q}%`).limit(20);
+      const { data: catLinks } = cats?.length
+        ? await supabase.from("content_categories").select("content_id").in("category_id", cats.map((c) => c.id)).limit(500)
+        : { data: [] };
+      const byCategory = [...new Set((catLinks ?? []).map((l) => l.content_id as string))];
+      const clauses = [`title.ilike.%${q}%`, `description.ilike.%${q}%`, `tags.cs.{${tag}}`];
+      if (byCategory.length) clauses.push(`id.in.(${byCategory.join(",")})`);
+      query = query.or(clauses.join(","));
     }
   }
   query =

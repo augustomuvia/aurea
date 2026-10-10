@@ -6,6 +6,7 @@ import { getSubscriptionView } from "@/lib/subscription";
 import { createClient } from "@/lib/supabase/server";
 import { Shelf } from "@/components/catalog/Shelf";
 import { SubscriptionBanner } from "@/components/app/SubscriptionBanner";
+import { QuickSearch } from "@/components/catalog/QuickSearch";
 import { EmptyState } from "@/components/ui/Glass";
 import { ButtonLink } from "@/components/ui/Button";
 import { Library } from "lucide-react";
@@ -47,6 +48,8 @@ export default async function AppHome() {
           {firstName ? `, ${firstName}` : ""}.
         </h1>
       </header>
+
+      {!empty && <QuickSearch />}
 
       {notifications && notifications.length > 0 && (
         <section aria-label="Notificações" className="glass mb-8 p-5 animate-rise">

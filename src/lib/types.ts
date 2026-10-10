@@ -78,6 +78,10 @@ export interface Payment {
   verification_evidence: string | null;
   confirmed_at: string | null;
   rejected_reason: string | null;
+  proof_path: string | null;
+  proof_mime: string | null;
+  proof_size: number | null;
+  proof_uploaded_at: string | null;
   created_at: string;
   plans?: Pick<Plan, "name" | "code" | "duration_months"> | null;
   profiles?: { email: string; full_name: string } | null;

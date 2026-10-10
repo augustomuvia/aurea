@@ -203,3 +203,48 @@ describe("expiração e estados", () => {
     expect(await premium(u)).toBe(false);
   });
 });
+
+describe("comprovativo de pagamento", () => {
+  const path = (u: string, ref: string, ext = "png") => `${u}/${ref}-0123456789abcdef.${ext}`;
+  const attach = (u: string, ref: string, p: string, mime = "image/png", size = 2048) =>
+    svc("select public.attach_payment_proof($1,$2,$3,$4,$5)", [u, ref, p, mime, size]);
+
+  it("guarda o comprovativo, regista o evento e NÃO ativa a assinatura", async () => {
+    const u = await db.createUser("comprovativo@aurea.test");
+    const p = await order(u, "mensal");
+    await attach(u, p.reference, path(u, p.reference));
+    const [row] = await svc<{ status: string; proof_path: string; proof_mime: string; proof_size: number; proof_uploaded_at: Date | null }>(
+      "select status, proof_path, proof_mime, proof_size, proof_uploaded_at from public.payments where id = $1",
+      [p.id],
+    );
+    expect(row).toMatchObject({ status: "pending", proof_path: path(u, p.reference), proof_mime: "image/png", proof_size: 2048 });
+    expect(row.proof_uploaded_at).not.toBeNull();
+    expect(await premium(u)).toBe(false);
+    const [ev] = await svc<{ n: number }>("select count(*)::int n from public.payment_events where payment_id = $1 and type = 'proof_uploaded' and source = 'customer'", [p.id]);
+    expect(ev.n).toBe(1);
+    // Pode substituir enquanto o pedido estiver pendente.
+    await attach(u, p.reference, path(u, p.reference, "pdf"), "application/pdf", 9000);
+    expect(await premium(u)).toBe(false);
+  });
+
+  it("recusa tipo, tamanho, caminho de outro utilizador e pedidos não pendentes", async () => {
+    const u = await db.createUser("comprovativo2@aurea.test");
+    const other = await db.createUser("intruso@aurea.test");
+    const p = await order(u, "mensal");
+    await expect(attach(u, p.reference, path(u, p.reference, "jpg"), "image/gif")).rejects.toThrow(/invalid_proof_type/);
+    await expect(attach(u, p.reference, path(u, p.reference), "image/png", 5 * 1024 * 1024)).rejects.toThrow(/invalid_proof_size/);
+    await expect(attach(u, p.reference, path(other, p.reference))).rejects.toThrow(/invalid_proof_path/);
+    await expect(attach(u, p.reference, `${u}/../x.png`)).rejects.toThrow(/invalid_proof_path/);
+    await expect(attach(other, p.reference, path(other, p.reference))).rejects.toThrow(/payment_not_found/);
+    await svc("select public.cancel_own_pending_payment($1,$2)", [u, p.reference]);
+    await expect(attach(u, p.reference, path(u, p.reference))).rejects.toThrow(/payment_not_pending/);
+  });
+
+  it("o cliente não pode chamar a função diretamente", async () => {
+    const u = await db.createUser("comprovativo3@aurea.test");
+    const p = await order(u, "mensal");
+    await expect(
+      db.as("authenticated", u, () => db.query("select public.attach_payment_proof($1,$2,$3,'image/png',10)", [u, p.reference, path(u, p.reference)])),
+    ).rejects.toThrow(/permission denied/);
+  });
+});
