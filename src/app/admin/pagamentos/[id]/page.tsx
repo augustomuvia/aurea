@@ -48,7 +48,7 @@ export default async function AdminPaymentDetail({ params }: { params: Promise<{
             <Dt label="Transação indicada pelo cliente">{p.customer_reported_transaction_id ?? "—"}</Dt>
             <Dt label="Indicado em">{formatDateTime(p.customer_reported_at)}</Dt>
             <Dt label="Transação confirmada">{p.provider_transaction_id ?? "—"}</Dt>
-            <Dt label="Origem">{p.provider === "partner" ? "Parceiro (webhook)" : "Verificação manual"}</Dt>
+            <Dt label="Origem">{p.provider === "kursinha" ? "Kursinha (webhook)" : p.provider === "partner" ? "Parceiro (webhook)" : "Verificação manual"}</Dt>
           </dl>
           <div className="mt-6 border-t border-white/[0.07] pt-5">
             <h2 className="text-[0.7rem] uppercase tracking-[0.14em] text-mute">Comprovativo enviado pelo cliente</h2>
