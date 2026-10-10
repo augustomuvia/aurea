@@ -17,6 +17,8 @@ export interface Plan {
   sort_order: number;
   /** Checkout externo (Kursinha). Vazio: Multicaixa Express com verificação manual. */
   checkout_url: string | null;
+  /** Áudio AUREA (ecrã bloqueado e offline) incluído. Ver migração 20261010001100. */
+  includes_own_audio?: boolean;
 }
 
 export interface Category {

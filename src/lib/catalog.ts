@@ -2,10 +2,13 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { youtubeThumbnail } from "@/lib/youtube";
 import { audioSrc, themedCover } from "@/lib/audio";
+import { getOwnAudioAccess } from "@/lib/audio-access";
 import type { Category, ContentItem, PlayableTrack } from "@/lib/types";
 
 export type CatalogItem = ContentItem & {
   content_media: { youtube_video_id: string | null; audio_path?: string | null } | null;
+  /** O conteúdo tem áudio AUREA, mas o plano do utilizador não o inclui. */
+  own_audio_locked?: boolean;
 };
 
 export const CONTENT_SELECT = "*, content_categories(categories(slug, name)), content_media(youtube_video_id, audio_path)";
@@ -21,6 +24,7 @@ export function primaryCategory(item: CatalogItem): string | null {
 /** Só devolve uma faixa reproduzível se a BD (RLS) tiver libertado o media. */
 export function toTrack(item: CatalogItem): PlayableTrack | null {
   if (!item.content_media) return null;
+  if (!item.content_media.youtube_video_id && !item.content_media.audio_path) return null;
   return {
     contentId: item.id,
     slug: item.slug,
@@ -33,6 +37,19 @@ export function toTrack(item: CatalogItem): PlayableTrack | null {
     audioUrl: item.content_media.audio_path ? audioSrc(item.id) : null,
     durationSeconds: item.duration_seconds,
   };
+}
+
+/**
+ * Retira o áudio próprio a quem não tem um plano que o inclui (Trimestral e Anual).
+ * Conteúdos com YouTube continuam a tocar pelo YouTube; os só com áudio ficam bloqueados.
+ * A rota /api/audio verifica o mesmo, isto só evita mostrar o que não vai tocar.
+ */
+async function gateOwnAudio<T extends CatalogItem>(items: T[]): Promise<T[]> {
+  if (!items.some((i) => i.content_media?.audio_path)) return items;
+  if ((await getOwnAudioAccess()).allowed) return items;
+  return items.map((i) =>
+    i.content_media?.audio_path ? { ...i, own_audio_locked: true, content_media: { ...i.content_media, audio_path: null } } : i,
+  );
 }
 
 function sanitizeQuery(q: string) {
@@ -104,14 +121,16 @@ export async function listContent(filters: CatalogFilters = {}): Promise<Catalog
     console.error("[catalog] listContent", error.message);
     return [];
   }
-  return (data ?? []) as unknown as CatalogItem[];
+  return gateOwnAudio((data ?? []) as unknown as CatalogItem[]);
 }
 
 export async function getContentBySlug(slug: string): Promise<CatalogItem | null> {
   if (!/^[a-z0-9-]{2,90}$/.test(slug)) return null;
   const supabase = await createClient();
   const { data } = await supabase.from("content_items").select(CONTENT_SELECT).eq("slug", slug).eq("status", "published").maybeSingle();
-  return (data as unknown as CatalogItem) ?? null;
+  if (!data) return null;
+  const [item] = await gateOwnAudio([data as unknown as CatalogItem]);
+  return item;
 }
 
 export async function listCategories(): Promise<Category[]> {

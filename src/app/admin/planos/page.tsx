@@ -39,6 +39,7 @@ export default async function AdminPlans() {
                 </Field>
                 <Checkbox name="isActive" defaultChecked={p.is_active} label="Plano ativo" />
                 <Checkbox name="isHighlighted" defaultChecked={p.is_highlighted} label="Destacar como melhor valor" />
+                <Checkbox name="includesOwnAudio" defaultChecked={Boolean(p.includes_own_audio)} label="Inclui áudios AUREA (ecrã bloqueado e offline)" />
                 <SubmitButton variant="glass" className="w-full">Guardar</SubmitButton>
               </ActionForm>
             </section>

@@ -38,11 +38,11 @@ const FAQ = [
   },
   {
     q: "De onde vêm os conteúdos?",
-    a: "Os conteúdos são vídeos públicos do YouTube incorporados através do leitor oficial, respeitando as regras da plataforma. Por isso podem surgir anúncios, marcas ou avisos do YouTube.",
+    a: "A biblioteca junta sons originais AUREA e vídeos públicos do YouTube incorporados através do leitor oficial, respeitando as regras da plataforma. Nos vídeos do YouTube podem surgir anúncios, marcas ou avisos do YouTube.",
   },
   {
     q: "Posso ouvir com o ecrã bloqueado?",
-    a: "O leitor oficial do YouTube exige que o vídeo esteja visível durante a reprodução, pelo que a reprodução em segundo plano não está disponível.",
+    a: "Sim, nos sons AUREA dos planos Trimestral e Anual, que também pode descarregar para ouvir offline. Os vídeos do YouTube precisam de ficar visíveis durante a reprodução, por regra do próprio YouTube.",
   },
 ];
 
@@ -150,7 +150,8 @@ export default async function HomePage() {
               { t: "Proteger o foco", d: "Som contínuo e discreto que reduz distrações do ambiente." },
               { t: "Preparar o descanso", d: "Ambientes longos e suaves para o fim do dia." },
               { t: "Acompanhar a prática", d: "Texturas sonoras para meditação e respiração." },
-              { t: "Ouvir com o ecrã bloqueado", d: "Nas faixas de áudio AUREA, o som continua com o telemóvel bloqueado ou noutra app, com controlos no ecrã de bloqueio." },
+              { t: "Ouvir com o ecrã bloqueado", d: "Nos planos Trimestral e Anual, os sons AUREA continuam com o telemóvel bloqueado ou noutra app, com controlos no ecrã de bloqueio." },
+              { t: "Ouvir offline", d: "Nos planos Trimestral e Anual, descarregue os sons AUREA e ouça sem rede nem dados móveis, em casa, na estrada ou em viagem." },
               { t: "Como uma app no telemóvel", d: "Adicione a AUREA ao ecrã principal no iPhone ou Android e abra com um toque, com o nosso logótipo." },
             ].map((b) => (
               <li key={b.t} className="border-l border-gold/30 pl-4">

@@ -107,7 +107,7 @@ export function BulkAudioUpload({ categories }: { categories: { id: string; name
     <div className="space-y-5">
       <div className="glass space-y-4 p-6">
         <p className="text-sm text-mute">
-          Cada ficheiro passa a ser um conteúdo só com áudio próprio, que toca com o ecrã bloqueado. O título vem do nome do ficheiro (pode alterá-lo abaixo ou depois). Use apenas
+          Cada ficheiro passa a ser um conteúdo só com áudio próprio, que toca com o ecrã bloqueado e pode ser descarregado (só nos planos com áudio AUREA, em Admin → Planos). O título vem do nome do ficheiro (pode alterá-lo abaixo ou depois). Use apenas
           áudio que criou ou que tem licença para usar. Máximo 50 MB por ficheiro.
         </p>
         <div className="flex flex-wrap items-end gap-4">

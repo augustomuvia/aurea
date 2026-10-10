@@ -76,6 +76,7 @@ export const planSchema = z.object({
   features: z.array(z.string().trim().min(2).max(120)).max(12),
   isActive: z.boolean(),
   isHighlighted: z.boolean(),
+  includesOwnAudio: z.boolean(),
   checkoutUrl: z.string().trim().max(2000),
 });
 

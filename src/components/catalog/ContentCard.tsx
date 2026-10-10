@@ -24,7 +24,9 @@ export function ContentCard({
   href?: string;
   size?: "md" | "lg";
 }) {
-  const playable = Boolean(item.content_media);
+  // Só com áudio AUREA e o plano não o inclui: não toca, mostra para que plano é.
+  const planLocked = Boolean(item.own_audio_locked && !item.content_media?.youtube_video_id);
+  const playable = Boolean(item.content_media) && !planLocked;
   const link = href ?? `/app/conteudo/${item.slug}`;
   const category = primaryCategory(item);
   return (
@@ -47,7 +49,7 @@ export function ContentCard({
           )}
           {!playable && (
             <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-ink/60 px-2 py-0.5 text-[0.66rem] text-paper/75 backdrop-blur-md">
-              <Lock className="h-3 w-3" /> Premium
+              <Lock className="h-3 w-3" /> {planLocked ? "Trimestral e Anual" : "Premium"}
             </span>
           )}
         </div>
