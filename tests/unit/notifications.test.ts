@@ -162,6 +162,9 @@ describe("Gmail API", () => {
     expect(text).toContain("espaços");
     expect(text).not.toContain("supersecret");
     expect(text).not.toContain("verysecrettoken");
-    expect(diagnoseGoogleEnv({ EMAIL_PROVIDER: "gmail", GOOGLE_CLIENT_ID: "GOCSPX-oops" })[1].ok).toBe(false);
+    const swapped = diagnoseGoogleEnv({ EMAIL_PROVIDER: "gmail", GOOGLE_CLIENT_ID: "GOCSPX-oopssecret" })[1];
+    expect(swapped.ok).toBe(false);
+    expect(swapped.detail).toContain("parece a chave secreta");
+    expect(swapped.detail).not.toContain("oopssecret");
   });
 });
