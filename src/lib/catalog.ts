@@ -1,13 +1,14 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { youtubeThumbnail } from "@/lib/youtube";
+import { audioSrc } from "@/lib/audio";
 import type { Category, ContentItem, PlayableTrack } from "@/lib/types";
 
 export type CatalogItem = ContentItem & {
-  content_media: { youtube_video_id: string } | null;
+  content_media: { youtube_video_id: string; audio_path?: string | null } | null;
 };
 
-export const CONTENT_SELECT = "*, content_categories(categories(slug, name)), content_media(youtube_video_id)";
+export const CONTENT_SELECT = "*, content_categories(categories(slug, name)), content_media(youtube_video_id, audio_path)";
 
 export function coverOf(item: Pick<ContentItem, "cover_url" | "youtube_video_id">) {
   return item.cover_url || youtubeThumbnail(item.youtube_video_id);
@@ -29,6 +30,7 @@ export function toTrack(item: CatalogItem): PlayableTrack | null {
     isBinaural: item.is_binaural,
     coverUrl: coverOf(item),
     videoId: item.content_media.youtube_video_id,
+    audioUrl: item.content_media.audio_path ? audioSrc(item.id) : null,
     durationSeconds: item.duration_seconds,
   };
 }

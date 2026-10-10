@@ -11,7 +11,13 @@ export const metadata: Metadata = {
   title: { default: "AUREA — Encontre o seu estado de equilíbrio", template: "%s · AUREA" },
   description: "Experiências sonoras cuidadosamente selecionadas para concentração, descanso, meditação e relaxamento.",
   openGraph: { title: "AUREA", description: "Um espaço para desacelerar.", locale: "pt_AO", type: "website" },
-  icons: { icon: "/icon.svg" },
+  applicationName: "AUREA",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  // iPhone: ao adicionar ao ecrã principal abre em ecrã inteiro com o nome AUREA.
+  appleWebApp: { capable: true, title: "AUREA", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {

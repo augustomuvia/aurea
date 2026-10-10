@@ -194,8 +194,18 @@ export function PlayerShell() {
           {/* O iframe do YouTube fica sempre neste nó: nunca é desmontado durante a navegação. */}
           <div className={expanded ? "relative" : ""}>
             <div className={`relative overflow-hidden bg-black transition-[height] duration-500 ${videoClass}`}>
-              <div ref={hostRef} className="absolute inset-0 [&>iframe]:h-full [&>iframe]:w-full" />
-              {current && needsTap && status !== "playing" && status !== "error" && !collapsed && (
+              <div ref={hostRef} className={`absolute inset-0 [&>iframe]:h-full [&>iframe]:w-full ${p.usingAudio ? "invisible" : ""}`} />
+              {current && p.usingAudio && (
+                // Áudio próprio: mostra a capa; o som continua com o ecrã bloqueado.
+                <div className="absolute inset-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={current.coverUrl} alt="" className="h-full w-full object-cover opacity-80" />
+                  <p className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/90 to-transparent px-4 pb-3 pt-8 text-center text-xs text-paper/85">
+                    Áudio AUREA · continua a tocar com o ecrã bloqueado
+                  </p>
+                </div>
+              )}
+              {current && needsTap && !p.usingAudio && status !== "playing" && status !== "error" && !collapsed && (
                 <p
                   role="status"
                   className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-ink/90 to-transparent px-4 pb-6 pt-3 text-center text-xs text-paper/90"
@@ -208,18 +218,25 @@ export function PlayerShell() {
                   <div>
                     <AlertCircle className="mx-auto mb-3 h-6 w-6 text-danger" />
                     <p className="text-sm text-paper/85">{error}</p>
-                    {p.index < p.queue.length - 1 && (
-                      <button onClick={p.next} className="press mt-4 text-sm text-gold-light underline underline-offset-4">
-                        Passar ao seguinte
+                    <div className="mt-4 flex items-center justify-center gap-5">
+                      <button onClick={p.retry} className="press text-sm text-gold-light underline underline-offset-4">
+                        Tentar novamente
                       </button>
-                    )}
+                      {p.index < p.queue.length - 1 && (
+                        <button onClick={p.next} className="press text-sm text-paper/70 underline underline-offset-4">
+                          Passar ao seguinte
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
             </div>
             {expanded && (
               <p className="mt-3 text-[0.72rem] leading-relaxed text-mute">
-                Reprodução através do leitor oficial do YouTube. Publicidade, marcas e avisos do YouTube podem ser apresentados.
+                {p.usingAudio
+                  ? "Áudio AUREA: pode bloquear o ecrã ou mudar de app, o som continua e os controlos aparecem no ecrã de bloqueio."
+                  : "Reprodução através do leitor oficial do YouTube. Publicidade, marcas e avisos do YouTube podem ser apresentados."}
               </p>
             )}
           </div>

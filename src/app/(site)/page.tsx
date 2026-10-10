@@ -150,6 +150,8 @@ export default async function HomePage() {
               { t: "Proteger o foco", d: "Som contínuo e discreto que reduz distrações do ambiente." },
               { t: "Preparar o descanso", d: "Ambientes longos e suaves para o fim do dia." },
               { t: "Acompanhar a prática", d: "Texturas sonoras para meditação e respiração." },
+              { t: "Ouvir com o ecrã bloqueado", d: "Nas faixas de áudio AUREA, o som continua com o telemóvel bloqueado ou noutra app, com controlos no ecrã de bloqueio." },
+              { t: "Como uma app no telemóvel", d: "Adicione a AUREA ao ecrã principal no iPhone ou Android e abra com um toque, com o nosso logótipo." },
             ].map((b) => (
               <li key={b.t} className="border-l border-gold/30 pl-4">
                 <p className="font-medium text-paper">{b.t}</p>
