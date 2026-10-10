@@ -75,6 +75,7 @@ export const planSchema = z.object({
   features: z.array(z.string().trim().min(2).max(120)).max(12),
   isActive: z.boolean(),
   isHighlighted: z.boolean(),
+  checkoutUrl: z.string().trim().max(2000),
 });
 
 export const reasonSchema = z.string().trim().min(5, "Indique um motivo (mínimo 5 caracteres).").max(500);

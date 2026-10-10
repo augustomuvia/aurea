@@ -11,6 +11,8 @@ import { slugify } from "@/lib/format";
 import { checkYouTubeOEmbed, parseYouTubeUrl } from "@/lib/youtube";
 import { contentSchema, evidenceSchema, fieldErrors, planSchema, reasonSchema } from "@/lib/validation";
 import type { ActionResult } from "@/lib/types";
+import { checkCheckoutUrl } from "@/lib/ebook/config";
+import { serverEnv } from "@/lib/env";
 
 const uuid = z.string().uuid();
 
@@ -314,16 +316,23 @@ export async function updatePlanAction(_: unknown, formData: FormData): Promise<
       .filter(Boolean),
     isActive: formData.get("isActive") === "on",
     isHighlighted: formData.get("isHighlighted") === "on",
+    checkoutUrl: String(formData.get("checkoutUrl") ?? ""),
   });
   if (!parsed.success) return { ok: false, error: "Verifique os campos.", fieldErrors: fieldErrors(parsed.error) };
   const v = parsed.data;
+  let checkoutUrl: string | null = null;
+  if (v.checkoutUrl) {
+    const c = checkCheckoutUrl(v.checkoutUrl, serverEnv.planCheckoutHosts);
+    if (!c.ok) return { ok: false, error: c.error, fieldErrors: { checkoutUrl: [c.error] } };
+    checkoutUrl = c.url;
+  }
   const svc = createServiceClient();
   const { data: before } = await svc.from("plans").select("*").eq("id", v.id).maybeSingle();
   if (!before) return { ok: false, error: "Plano não encontrado." };
   const amount = v.priceKz * 100;
   const { error } = await svc
     .from("plans")
-    .update({ name: v.name, description: v.description, amount_minor: amount, features: v.features, is_active: v.isActive, is_highlighted: v.isHighlighted })
+    .update({ name: v.name, description: v.description, amount_minor: amount, features: v.features, is_active: v.isActive, is_highlighted: v.isHighlighted, checkout_url: checkoutUrl })
     .eq("id", v.id);
   if (error) return { ok: false, error: "Não foi possível guardar." };
   await audit(admin.id, "plan.update", "plan", v.id, null, {
@@ -331,6 +340,7 @@ export async function updatePlanAction(_: unknown, formData: FormData): Promise<
     price_from_minor: before.amount_minor,
     price_to_minor: amount,
     active: v.isActive,
+    checkout_url: checkoutUrl,
   });
   revalidatePath("/admin/planos");
   revalidatePath("/planos");

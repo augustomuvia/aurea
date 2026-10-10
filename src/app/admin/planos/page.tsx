@@ -34,6 +34,9 @@ export default async function AdminPlans() {
                 <Field label="Preço (Kz, inteiro)" name={`price-${p.id}`}><Input name="priceKz" id={`price-${p.id}`} type="number" min={100} step={1} defaultValue={p.amount_minor / 100} /></Field>
                 <Field label="Descrição" name={`desc-${p.id}`}><Input name="description" id={`desc-${p.id}`} defaultValue={p.description} maxLength={300} /></Field>
                 <Field label="Características (uma por linha)" name={`feat-${p.id}`}><Textarea name="features" id={`feat-${p.id}`} rows={6} defaultValue={p.features.join("\n")} /></Field>
+                <Field label="Link de checkout Kursinha (opcional)" name={`checkout-${p.id}`} hint="Com link, o botão do plano abre a Kursinha e o acesso é ativado sozinho. Vazio: Multicaixa Express com verificação manual.">
+                  <Input name="checkoutUrl" id={`checkout-${p.id}`} type="url" placeholder="https://app.kursinha.com/…" defaultValue={p.checkout_url ?? ""} />
+                </Field>
                 <Checkbox name="isActive" defaultChecked={p.is_active} label="Plano ativo" />
                 <Checkbox name="isHighlighted" defaultChecked={p.is_highlighted} label="Destacar como melhor valor" />
                 <SubmitButton variant="glass" className="w-full">Guardar</SubmitButton>

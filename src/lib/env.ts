@@ -54,6 +54,11 @@ export const serverEnv = {
   get kursinhaProductIds(): string[] {
     return (process.env.KURSINHA_PRODUCT_IDS ?? "").split(",").map((h) => h.trim()).filter(Boolean);
   },
+  /** Domínios autorizados para o link de checkout dos planos (Admin → Planos). */
+  get planCheckoutHosts(): string[] {
+    const v = (process.env.PLAN_CHECKOUT_ALLOWED_HOSTS ?? "kursinha.com").split(",").map((h) => h.trim()).filter(Boolean);
+    return v.length ? v : ["kursinha.com"];
+  },
   /** Domínios autorizados para o checkout do e-book (ex.: "kursinha.com"). Vazio: qualquer domínio HTTPS válido. */
   get ebookCheckoutHosts(): string[] {
     return (process.env.EBOOK_CHECKOUT_ALLOWED_HOSTS ?? "").split(",").map((h) => h.trim()).filter(Boolean);

@@ -26,6 +26,10 @@ export async function createOrderAction(_: unknown, formData: FormData): Promise
   const plan = String(formData.get("plan") ?? "");
   if (!(await rateLimit(`order:${user.id}`, 10, 3600))) return { ok: false, error: "Demasiados pedidos. Tente novamente mais tarde." };
 
+  // Plano vendido na Kursinha: não há pedido manual; o acesso chega pelo webhook.
+  const { data: planRow } = await createServiceClient().from("plans").select("checkout_url").eq("code", plan).maybeSingle();
+  if (planRow?.checkout_url) redirect(`/checkout/${encodeURIComponent(plan)}`);
+
   const provider = getProvider(serverEnv.paymentMode);
   if (provider.id === "manual_review") {
     const s = await getSettings();
