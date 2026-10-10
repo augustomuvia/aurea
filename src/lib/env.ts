@@ -43,6 +43,17 @@ export const serverEnv = {
   get cronSecret() {
     return process.env.CRON_SECRET ?? "";
   },
+  /** Kursinha: segredo do webhook (HMAC) ou, na falta dele, token no URL. */
+  get kursinhaWebhookSecret() {
+    return process.env.KURSINHA_WEBHOOK_SECRET ?? "";
+  },
+  get kursinhaWebhookToken() {
+    return process.env.KURSINHA_WEBHOOK_TOKEN ?? "";
+  },
+  /** IDs de produto da Kursinha que dão acesso (vazio: decide só o preço do plano). */
+  get kursinhaProductIds(): string[] {
+    return (process.env.KURSINHA_PRODUCT_IDS ?? "").split(",").map((h) => h.trim()).filter(Boolean);
+  },
   /** Domínios autorizados para o checkout do e-book (ex.: "kursinha.com"). Vazio: qualquer domínio HTTPS válido. */
   get ebookCheckoutHosts(): string[] {
     return (process.env.EBOOK_CHECKOUT_ALLOWED_HOSTS ?? "").split(",").map((h) => h.trim()).filter(Boolean);

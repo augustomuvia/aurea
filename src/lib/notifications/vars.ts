@@ -63,7 +63,7 @@ const STATUS: Record<string, string> = {
   expired: "Expirado",
   reversed: "Revertido",
 };
-const METHOD: Record<string, string> = { multicaixa_express: "Multicaixa Express", manual_grant: "Acesso concedido manualmente" };
+const METHOD: Record<string, string> = { multicaixa_express: "Multicaixa Express", kursinha: "Kursinha", manual_grant: "Acesso concedido manualmente" };
 
 export function planDuration(months: number | null | undefined) {
   if (!months) return "";

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CreditCard, Film, Layers, LogOut, Settings, ShieldCheck, Users, BadgeCheck, ArrowLeft, BookOpen, Bell } from "lucide-react";
+import { BarChart3, CreditCard, Film, Layers, LogOut, Settings, ShieldCheck, Users, BadgeCheck, ArrowLeft, BookOpen, Bell, ShoppingBag } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { logoutAction } from "@/app/(site)/(auth)/actions";
 
@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/admin/conteudos", label: "Conteúdos", icon: Film },
   { href: "/admin/assinaturas", label: "Assinaturas", icon: BadgeCheck },
   { href: "/admin/pagamentos", label: "Pagamentos", icon: CreditCard },
+  { href: "/admin/kursinha", label: "Kursinha", icon: ShoppingBag },
   { href: "/admin/planos", label: "Planos", icon: Layers },
   { href: "/admin/ebook", label: "E-book", icon: BookOpen },
   { href: "/admin/notificacoes", label: "Notificações", icon: Bell },

@@ -70,7 +70,7 @@ export interface Payment {
   reference: string;
   amount_minor: number;
   status: PaymentStatus;
-  provider: "manual_review" | "partner";
+  provider: "manual_review" | "partner" | "kursinha";
   provider_transaction_id: string | null;
   customer_reported_transaction_id: string | null;
   customer_note: string | null;

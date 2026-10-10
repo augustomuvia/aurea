@@ -46,7 +46,7 @@ const shortDateTime = new Intl.DateTimeFormat("pt-PT", { day: "2-digit", month: 
 const d = (v: string | Date | null | undefined) => (v ? shortDate.format(new Date(v)) : "");
 const dt = (v: string | Date | null | undefined) => (v ? `${shortDateTime.format(new Date(v))} (Luanda)` : "");
 
-const METHOD: Record<string, string> = { multicaixa_express: "Multicaixa Express" };
+const METHOD: Record<string, string> = { multicaixa_express: "Multicaixa Express", kursinha: "Kursinha" };
 
 const INK: Rgb = [0.043, 0.043, 0.059];
 const TEXT: Rgb = [0.165, 0.165, 0.2];
