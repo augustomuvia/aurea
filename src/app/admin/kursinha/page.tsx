@@ -6,7 +6,9 @@ import { Table, td } from "@/components/admin/Table";
 import { Badge, GlassCard, PageHeader } from "@/components/ui/Glass";
 import { formatDateTime } from "@/lib/format";
 import { formatKz } from "@/lib/pricing";
-import { retryKursinhaSaleAction } from "./actions";
+import { ActionForm } from "@/components/admin/ActionForm";
+import { inputClass } from "@/components/ui/Field";
+import { assignKursinhaSaleAction, retryKursinhaSaleAction } from "./actions";
 
 export const metadata = { title: "Kursinha" };
 
@@ -66,6 +68,17 @@ export default async function AdminKursinha() {
               </td>
               <td className={td}>
                 {r.payment_id && <Link href={`/admin/pagamentos/${r.payment_id}`} className="text-xs text-gold-light hover:underline">Pagamento</Link>}
+                {r.outcome === "awaiting_account" && (
+                  <details className="mb-2">
+                    <summary className="cursor-pointer text-xs text-gold-light hover:underline">Associar a uma conta</summary>
+                    <ActionForm action={assignKursinhaSaleAction} className="mt-2 w-64 space-y-2">
+                      <input type="hidden" name="saleId" value={r.sale_id} />
+                      <input name="email" type="email" required placeholder="E-mail da conta AUREA" aria-label="E-mail da conta AUREA" className={`${inputClass} h-9 text-xs`} />
+                      <input name="reason" required minLength={5} placeholder="Motivo (ex.: confirmado por WhatsApp)" aria-label="Motivo" className={`${inputClass} h-9 text-xs`} />
+                      <button className="press rounded-full bg-gold px-3 py-1.5 text-xs font-medium text-ink">Associar e ativar</button>
+                    </ActionForm>
+                  </details>
+                )}
                 {(r.outcome === "awaiting_account" || r.outcome === "no_matching_plan") && (
                   <form action={retryKursinhaSaleAction}>
                     <input type="hidden" name="saleId" value={r.sale_id} />

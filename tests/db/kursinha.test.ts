@@ -173,4 +173,33 @@ describe("vendas Kursinha", () => {
     ).rejects.toThrow(/permission denied/);
     await expect(db.as("authenticated", user, () => db.query("select * from public.kursinha_sales"))).rejects.toThrow(/permission denied/);
   });
+
+  it("admin associa venda de e-mail diferente à conta certa e ativa o plano", async () => {
+    const admin = await confirmedUser("admin-k@aurea.test");
+    await db.query("insert into public.roles (user_id, role) values ($1, 'super_admin')", [admin]);
+    const user = await confirmedUser("conta-real@aurea.test");
+    const s = sale({ buyer_email: "outro-email@gmail.test" });
+    expect(await handle(s)).toMatchObject({ status: "awaiting_account" });
+    const assign = async (u: string, actor: string, reason = "Confirmado por WhatsApp") => {
+      const [r] = await svc<{ r: Json }>("select public.kursinha_assign_sale($1,$2,$3,$4) r", [s.sale_id, u, actor, reason]);
+      return r.r;
+    };
+    expect(await assign(user, user)).toMatchObject({ ok: false, error: "forbidden" });
+    expect(await assign(user, admin, "x")).toMatchObject({ ok: false, error: "reason_required" });
+    expect(await premium(user)).toBe(false);
+    expect(await assign(user, admin)).toMatchObject({ ok: true, status: "activated" });
+    expect(await premium(user)).toBe(true);
+    expect(await saleRow(s.sale_id)).toMatchObject({ outcome: "activated", user_id: user });
+    // Não pode ser associada duas vezes.
+    expect(await assign(user, admin)).toMatchObject({ ok: false, error: "sale_not_awaiting" });
+    const [a] = await svc<{ c: number }>("select count(*)::int c from public.admin_audit_logs where action = 'kursinha.assign' and target_id = $1", [s.sale_id]);
+    expect(a.c).toBe(1);
+  });
+
+  it("clientes não podem associar vendas", async () => {
+    const user = await confirmedUser("intruso2@aurea.test");
+    await expect(
+      db.as("authenticated", user, () => db.query("select public.kursinha_assign_sale('x', $1, $1, 'motivo')", [user])),
+    ).rejects.toThrow(/permission denied/);
+  });
 });

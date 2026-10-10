@@ -16,6 +16,7 @@ o plano automaticamente, através do webhook oficial da Kursinha
 
 Entregas repetidas (`event + saleId`) respondem 200 sem efeito; eventos fora de ordem não estragam o estado.
 Tudo fica visível em **Admin → Kursinha**, com um botão “Tentar de novo” para vendas à espera de conta ou sem plano.
+Se o comprador usou na Kursinha um e-mail diferente do da conta AUREA, use **Associar a uma conta** nessa venda: indique o e-mail da conta e um motivo; o plano é ativado nessa conta e a ação fica na auditoria (migração `20261010000800_kursinha_assign.sql`).
 
 ## Configuração
 
