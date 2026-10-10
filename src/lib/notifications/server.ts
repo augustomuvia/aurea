@@ -6,7 +6,7 @@ import { createServiceClient } from "@/lib/supabase/admin";
 import { serviceRoleKeyOrNull } from "@/lib/env";
 import { mergeNotificationSettings, processQueue, type EmailJob, type NotificationSettings, type QueueRepo, type QueueRunResult } from "./engine";
 import { getEmailProvider, type EmailProvider } from "./providers";
-import { renderVerificationEmail } from "./render";
+import { renderAccountConfirmEmail, renderVerificationEmail } from "./render";
 import { samplePayload, luandaDate, luandaHour } from "./vars";
 import type { TemplateContent, TemplateKey } from "./templates";
 import { jobAttachments } from "@/lib/receipts/server";
@@ -231,6 +231,56 @@ export async function sendVerificationEmail(to: string) {
     .update({ verification_from: settings.from_email, verification_code_hash: hash(code), verification_sent_at: new Date().toISOString() })
     .eq("id", 1);
   return { ok: true as const, messageId: r.messageId };
+}
+
+/**
+ * Envia o link de confirmação de conta pelo Gmail da AUREA, em vez do e-mail do Supabase
+ * (que tem um limite baixo por hora e bloqueava registos com "Demasiadas tentativas").
+ * Só envia com a integração ativa; devolve ok:false para o chamador usar o Supabase.
+ */
+export async function sendAccountConfirmEmail(to: string, name: string, link: string, userId: string | null) {
+  const svc = createServiceClient();
+  const { settings, provider, status } = await getIntegration(svc);
+  if (status.code !== "active") return { ok: false as const, error: "integration_inactive" };
+  const opts = { siteUrl: settings.site_url, supportEmail: settings.reply_to || settings.from_email, button: settings.design.button };
+  const mail = renderAccountConfirmEmail(name, link, opts);
+  // Registo para o painel; o link (credencial) nunca é guardado.
+  const { data: job } = await svc
+    .from("email_jobs")
+    .insert({
+      idempotency_key: `auth-confirm:${crypto.randomUUID()}`,
+      event_type: "auth.signup",
+      template_key: "auth_confirm",
+      audience: "customer",
+      to_email: to.toLowerCase(),
+      user_id: userId,
+      status: "processing",
+      attempts: 1,
+      locked_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+  const started = Date.now();
+  const r = await provider.send({
+    from: { name: settings.from_name, email: settings.from_email },
+    to,
+    replyTo: settings.reply_to || null,
+    subject: mail.subject,
+    text: mail.text,
+    html: mail.html,
+  });
+  if (job) {
+    await svc.rpc("complete_email_job", {
+      p_job: job.id,
+      p_outcome: r.ok ? "sent" : "failed",
+      p_provider: provider.id,
+      p_message_id: r.ok ? r.messageId : null,
+      p_error: r.ok ? null : r.error,
+      p_permanent: true,
+      p_duration_ms: Date.now() - started,
+    });
+  }
+  return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
 }
 
 export async function confirmVerificationCode(code: string, actorId: string) {

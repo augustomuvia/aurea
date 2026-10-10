@@ -61,7 +61,7 @@ export default async function EmailJobDetail({ params }: { params: Promise<{ id:
           ))}
         </dl>
         <div className="space-y-5">
-          {job.status === "failed" && !job.is_test && (
+          {job.status === "failed" && !job.is_test && job.template_key !== "auth_confirm" && (
             <section className="glass p-6">
               <h2 className="font-medium text-paper">Voltar a tentar</h2>
               <p className="mt-1 text-sm text-mute">Use depois de corrigir a causa (credenciais, remetente, endereço). O e-mail volta à fila com mais 3 tentativas.</p>

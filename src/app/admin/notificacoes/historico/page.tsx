@@ -82,7 +82,7 @@ export default async function EmailHistory({ searchParams }: { searchParams: Pro
               <td className={`${td} whitespace-nowrap text-mute`}>{formatDateTime(j.created_at)}</td>
               <td className={td}><span className="block max-w-[14rem] truncate text-paper/80">{j.to_email}</span></td>
               <td className={td}>
-                {TEMPLATES[j.template_key as keyof typeof TEMPLATES]?.name ?? (j.template_key === "verification" ? "Verificação" : j.template_key)}
+                {TEMPLATES[j.template_key as keyof typeof TEMPLATES]?.name ?? (j.template_key === "verification" ? "Verificação" : j.template_key === "auth_confirm" ? "Confirmação de conta" : j.template_key)}
                 {j.is_test && <span className="ml-1 text-xs text-amber-200">teste</span>}
               </td>
               <td className={`${td} text-xs`}>
