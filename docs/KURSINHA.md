@@ -41,3 +41,12 @@ Migração: executar `supabase/migrations/20261010000600_kursinha.sql` uma vez n
 3. Se aparecer “Sem plano com este preço” com um valor 100× maior, a Kursinha está a enviar cêntimos: avisar para ajustar a conversão em `src/lib/payments/kursinha.ts` (a documentação não indica a unidade; assume-se Kz).
 
 Limitação: a Kursinha não tem renovação automática nem eventos de assinatura; cada compra é um período novo.
+
+## Botões dos planos → checkout da Kursinha
+
+Em **Admin → Planos**, cada plano tem o campo **Link de checkout Kursinha** (domínios aceites: `PLAN_CHECKOUT_ALLOWED_HOSTS`, por omissão `kursinha.com`).
+
+- Com link: em `/checkout/<plano>` o cliente (com sessão iniciada) vê o e-mail da conta e o botão **Pagar na Kursinha**. Não é criado pedido Multicaixa manual; o acesso chega pelo webhook.
+- Sem link: mantém-se o fluxo Multicaixa Express com verificação manual.
+
+Migração: `supabase/migrations/20261010000700_plan_checkout_url.sql`.

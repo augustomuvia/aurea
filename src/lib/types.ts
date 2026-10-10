@@ -15,6 +15,8 @@ export interface Plan {
   is_active: boolean;
   is_highlighted: boolean;
   sort_order: number;
+  /** Checkout externo (Kursinha). Vazio: Multicaixa Express com verificação manual. */
+  checkout_url: string | null;
 }
 
 export interface Category {
