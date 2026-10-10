@@ -13,6 +13,7 @@ describe("áudio próprio: títulos e capas", () => {
     expect(themedCover("Chuva suave")).toBe("/covers/chuva.jpg");
     expect(themedCover("Ondas do mar")).toBe("/covers/mar.jpg");
     expect(themedCover("Foco profundo · ruído castanho")).toBe("/covers/foco.jpg");
+    expect(themedCover("Binaural gama 40 Hz")).toBe("/covers/binaural.jpg");
     expect(themedCover("Tom 528 Hz")).toBe("/covers/tons.jpg");
     expect(themedCover("Silêncio")).toBe(DEFAULT_COVER);
   });

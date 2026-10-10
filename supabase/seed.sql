@@ -1,13 +1,13 @@
 -- Dados iniciais de configuração (não são dados de demonstração).
 -- Preços em cêntimos de kwanza: 5.000 Kz = 500000.
 
-insert into public.plans (code, name, description, amount_minor, duration_months, features, is_highlighted, sort_order) values
+insert into public.plans (code, name, description, amount_minor, duration_months, features, is_highlighted, sort_order, includes_own_audio) values
   ('mensal', 'Mensal', 'Flexibilidade total, mês a mês.', 500000, 1,
-   array['Acesso à biblioteca premium', 'Reprodução dos conteúdos disponíveis', 'Pesquisa e filtros', 'Favoritos', 'Histórico de reprodução', 'Retoma de conteúdos', 'Utilização em dispositivos compatíveis'], false, 1),
+   array['Acesso à biblioteca premium', 'Reprodução dos conteúdos disponíveis', 'Pesquisa e filtros', 'Favoritos', 'Histórico de reprodução', 'Retoma de conteúdos', 'Utilização em dispositivos compatíveis'], false, 1, false),
   ('trimestral', 'Trimestral', 'Três meses para criar uma rotina.', 1200000, 3,
-   array['Acesso à biblioteca premium', 'Reprodução dos conteúdos disponíveis', 'Pesquisa e filtros', 'Favoritos', 'Histórico de reprodução', 'Retoma de conteúdos', 'Utilização em dispositivos compatíveis'], false, 2),
+   array['Acesso à biblioteca premium', 'Reprodução dos conteúdos disponíveis', 'Pesquisa e filtros', 'Favoritos', 'Histórico de reprodução', 'Retoma de conteúdos', 'Utilização em dispositivos compatíveis', 'Áudios AUREA com o ecrã bloqueado e offline'], false, 2, true),
   ('anual', 'Anual', 'Um ano inteiro de equilíbrio.', 3000000, 12,
-   array['Acesso à biblioteca premium', 'Reprodução dos conteúdos disponíveis', 'Pesquisa e filtros', 'Favoritos', 'Histórico de reprodução', 'Retoma de conteúdos', 'Utilização em dispositivos compatíveis'], true, 3)
+   array['Acesso à biblioteca premium', 'Reprodução dos conteúdos disponíveis', 'Pesquisa e filtros', 'Favoritos', 'Histórico de reprodução', 'Retoma de conteúdos', 'Utilização em dispositivos compatíveis', 'Áudios AUREA com o ecrã bloqueado e offline'], true, 3, true)
 on conflict (code) do nothing;
 
 insert into public.categories (slug, name, description, kind, sort_order) values

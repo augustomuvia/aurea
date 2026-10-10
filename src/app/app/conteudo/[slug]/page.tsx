@@ -7,6 +7,7 @@ import { coverOf, getContentBySlug, listContent, toTrack } from "@/lib/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { formatDurationLong, USE_LABEL } from "@/lib/format";
 import { PlayTrigger } from "@/components/catalog/PlayTrigger";
+import { OfflineButton } from "@/components/offline/OfflineButton";
 import { FavoriteButton } from "@/components/catalog/FavoriteButton";
 import { ButtonLink } from "@/components/ui/Button";
 import { Shelf } from "@/components/catalog/Shelf";
@@ -70,18 +71,37 @@ export default async function ContentPage({ params }: Props) {
               <>
                 <PlayTrigger queue={queue} index={0} resumeAt={resumeAt} title={item.title} variant="wide" />
                 <FavoriteButton contentId={item.id} />
+                {track.audioUrl && (
+                  <OfflineButton
+                    track={{
+                      contentId: item.id,
+                      slug: item.slug,
+                      title: item.title,
+                      category: track.category,
+                      coverUrl: track.coverUrl,
+                      durationSeconds: item.duration_seconds,
+                    }}
+                  />
+                )}
               </>
             ) : (
               <div className="glass flex w-full flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <p className="flex items-start gap-3 text-sm text-paper/80">
                   <Lock className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-                  Este conteúdo faz parte da biblioteca premium.
+                  {item.own_audio_locked
+                    ? "Este som AUREA é exclusivo dos planos Trimestral e Anual: toca com o ecrã bloqueado e pode ser descarregado para ouvir offline."
+                    : "Este conteúdo faz parte da biblioteca premium."}
                 </p>
-                <ButtonLink href="/planos" size="sm">Ver planos</ButtonLink>
+                <ButtonLink href="/planos" size="sm">{item.own_audio_locked ? "Mudar de plano" : "Ver planos"}</ButtonLink>
               </div>
             )}
           </div>
 
+          {track && item.own_audio_locked && (
+            <p className="mt-4 max-w-xl text-xs leading-relaxed text-mute">
+              Com o plano <Link href="/planos" className="text-gold-light underline underline-offset-2">Trimestral ou Anual</Link>, este som toca com o ecrã bloqueado e pode ser descarregado para ouvir offline.
+            </p>
+          )}
           {item.is_binaural && (
             <p className="mt-6 flex max-w-xl items-start gap-2 text-xs leading-relaxed text-mute">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />

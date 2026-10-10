@@ -328,6 +328,7 @@ export async function updatePlanAction(_: unknown, formData: FormData): Promise<
       .filter(Boolean),
     isActive: formData.get("isActive") === "on",
     isHighlighted: formData.get("isHighlighted") === "on",
+    includesOwnAudio: formData.get("includesOwnAudio") === "on",
     checkoutUrl: String(formData.get("checkoutUrl") ?? ""),
   });
   if (!parsed.success) return { ok: false, error: "Verifique os campos.", fieldErrors: fieldErrors(parsed.error) };
@@ -344,7 +345,7 @@ export async function updatePlanAction(_: unknown, formData: FormData): Promise<
   const amount = v.priceKz * 100;
   const { error } = await svc
     .from("plans")
-    .update({ name: v.name, description: v.description, amount_minor: amount, features: v.features, is_active: v.isActive, is_highlighted: v.isHighlighted, checkout_url: checkoutUrl })
+    .update({ name: v.name, description: v.description, amount_minor: amount, features: v.features, is_active: v.isActive, is_highlighted: v.isHighlighted, includes_own_audio: v.includesOwnAudio, checkout_url: checkoutUrl })
     .eq("id", v.id);
   if (error) return { ok: false, error: "Não foi possível guardar." };
   await audit(admin.id, "plan.update", "plan", v.id, null, {
@@ -352,6 +353,7 @@ export async function updatePlanAction(_: unknown, formData: FormData): Promise<
     price_from_minor: before.amount_minor,
     price_to_minor: amount,
     active: v.isActive,
+    own_audio: v.includesOwnAudio,
     checkout_url: checkoutUrl,
   });
   revalidatePath("/admin/planos");

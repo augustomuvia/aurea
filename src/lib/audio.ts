@@ -13,7 +13,7 @@ export const DEFAULT_COVER = "/covers/aurea.jpg";
  * A ordem importa: a primeira palavra encontrada ganha.
  */
 export const THEMED_COVERS: [RegExp, string][] = [
-  [/binaural|alfa|alpha|teta|theta|delta|beta/i, "binaural"],
+  [/binaural|alfa|alpha|teta|theta|delta|beta|gama|gamma/i, "binaural"],
   [/chuva|rain|tempestade/i, "chuva"],
   [/mar|onda|ocean|praia|agua|água|rio|spa/i, "mar"],
   [/foco|castanho|brown|rosa|pink|ruido|ruído|noise|estudo/i, "foco"],

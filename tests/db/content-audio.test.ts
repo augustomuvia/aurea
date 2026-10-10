@@ -59,3 +59,68 @@ describe("áudio próprio dos conteúdos", () => {
     await expect(svc("update public.content_media set audio_path = null, youtube_video_id = null where content_id = $1", [premiumId])).rejects.toThrow(/content_media_has_source/);
   });
 });
+
+describe("áudio AUREA só nos planos Trimestral e Anual", () => {
+  const subscribe = async (uid: string, code: string | null, expires = "now() + interval '30 days'") => {
+    await svc(
+      `insert into public.subscriptions (user_id, plan_id, status, starts_at, expires_at, payment_method, last_confirmed_at)
+       values ($1::uuid, (select id from public.plans where code = $2::text), 'active', now() - interval '2 days', ${expires}, 'manual_grant', now())
+       on conflict (user_id) do update set plan_id = excluded.plan_id, status = 'active', starts_at = excluded.starts_at, expires_at = excluded.expires_at`,
+      [uid, code],
+    );
+  };
+  const access = async (uid: string) =>
+    (await asUser<{ ok: boolean; until: string | null }>(uid, "select public.has_own_audio_access($1) ok, public.own_audio_until($1) until", [uid]))[0];
+
+  it("Trimestral e Anual incluem por omissão; Mensal não", async () => {
+    const rows = await svc<{ code: string; includes_own_audio: boolean }>("select code, includes_own_audio from public.plans order by sort_order");
+    expect(rows).toEqual([
+      { code: "mensal", includes_own_audio: false },
+      { code: "trimestral", includes_own_audio: true },
+      { code: "anual", includes_own_audio: true },
+    ]);
+  });
+
+  it("depende do plano ativo do utilizador", async () => {
+    const u = await db.createUser("plano-audio@aurea.test");
+    expect((await access(u)).ok).toBe(false);
+    await subscribe(u, "mensal");
+    expect(await access(u)).toEqual({ ok: false, until: null });
+    await subscribe(u, "trimestral");
+    const a = await access(u);
+    expect(a.ok).toBe(true);
+    expect(new Date(a.until!).getTime()).toBeGreaterThan(Date.now() + 29 * 86400_000);
+    await subscribe(u, "anual", "now() - interval '1 minute'");
+    expect((await access(u)).ok).toBe(false);
+  });
+
+  it("acesso manual sem plano não inclui; super admin inclui", async () => {
+    const u = await db.createUser("manual-audio@aurea.test");
+    await subscribe(u, null);
+    expect((await access(u)).ok).toBe(false);
+    const a = await access(admin);
+    expect(a.ok).toBe(true);
+    expect(a.until).not.toBeNull();
+  });
+
+  it("um utilizador não consulta o acesso de outro", async () => {
+    const u = await db.createUser("curioso-audio@aurea.test");
+    const rows = await asUser<{ ok: boolean }>(u, "select public.has_own_audio_access($1) ok", [admin]);
+    expect(rows[0].ok).toBe(false);
+  });
+
+  it("o admin pode ligar o áudio AUREA a outro plano", async () => {
+    const u = await db.createUser("mensal-audio@aurea.test");
+    await subscribe(u, "mensal");
+    await svc("update public.plans set includes_own_audio = true where code = 'mensal'");
+    expect((await access(u)).ok).toBe(true);
+    await svc("update public.plans set includes_own_audio = false where code = 'mensal'");
+  });
+
+  it("a vantagem aparece nas características dos planos que a incluem", async () => {
+    const rows = await svc<{ code: string; has: boolean }>(
+      "select code, 'Áudios AUREA com o ecrã bloqueado e offline' = any (features) has from public.plans order by sort_order",
+    );
+    expect(rows.map((r) => r.has)).toEqual([false, true, true]);
+  });
+});

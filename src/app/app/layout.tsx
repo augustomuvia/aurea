@@ -6,6 +6,8 @@ import { AppNav } from "@/components/app/AppNav";
 import { AnnouncementBar, MaintenanceGate } from "@/components/site/Notices";
 import { createClient } from "@/lib/supabase/server";
 import type { BellItem } from "@/components/app/NotificationBell";
+import { OfflineSync } from "@/components/offline/OfflineSync";
+import { getOwnAudioAccess } from "@/lib/audio-access";
 
 // Sessão, permissões e configurações editáveis pelo admin: sempre renderizado por pedido.
 export const dynamic = "force-dynamic";
@@ -14,10 +16,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser("/app");
   const supabase = await createClient();
   // RLS: cada utilizador só lê as suas notificações.
-  const [favorites, { data: notes }, { count: unread }] = await Promise.all([
+  const [favorites, { data: notes }, { count: unread }, ownAudio] = await Promise.all([
     getFavoriteIds(user.id),
     supabase.from("notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(12),
     supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).is("read_at", null),
+    getOwnAudioAccess(),
   ]);
   const items: BellItem[] = (notes ?? []).map((n) => ({
     id: n.id,
@@ -42,6 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {children}
         </main>
         <PlayerShell />
+        <OfflineSync access={ownAudio} />
       </PlayerProvider>
     </MaintenanceGate>
   );

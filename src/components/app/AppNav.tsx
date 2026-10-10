@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Heart, History, Home, Library, LogOut, Settings, Shield, UserRound } from "lucide-react";
+import { Bell, Download, Heart, History, Home, Library, LogOut, Settings, Shield, UserRound } from "lucide-react";
+import { clearOffline } from "@/lib/offline";
 import { Logo } from "@/components/brand/Logo";
 import { logoutAction } from "@/app/(site)/(auth)/actions";
 import { HeaderSearch } from "./HeaderSearch";
@@ -55,13 +56,14 @@ export function AppNav({ name, isAdmin, notifications }: { name: string; isAdmin
                   { href: "/app/assinatura", label: "Assinatura", icon: UserRound },
                   { href: "/app/pagamentos", label: "Pagamentos", icon: Library },
                   { href: "/app/notificacoes", label: "Notificações", icon: Bell },
+                  { href: "/offline", label: "Downloads offline", icon: Download },
                   { href: "/app/conta", label: "Conta e privacidade", icon: Settings },
                 ].map((l) => (
                   <Link key={l.href} href={l.href} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-paper/80 hover:bg-white/[0.06] hover:text-paper">
                     <l.icon className="h-4 w-4 text-mute" /> {l.label}
                   </Link>
                 ))}
-                <form action={logoutAction}>
+                <form action={logoutAction} onSubmit={() => void clearOffline()}>
                   <button type="submit" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-paper/80 hover:bg-white/[0.06] hover:text-paper">
                     <LogOut className="h-4 w-4 text-mute" /> Terminar sessão
                   </button>
