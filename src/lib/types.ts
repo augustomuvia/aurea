@@ -38,7 +38,8 @@ export interface ContentItem {
   is_binaural: boolean;
   duration_seconds: number | null;
   cover_url: string | null;
-  youtube_video_id: string;
+  /** Nulo nos conteúdos só com áudio próprio. */
+  youtube_video_id: string | null;
   status: ContentStatus;
   is_premium: boolean;
   is_featured: boolean;
@@ -98,7 +99,8 @@ export interface PlayableTrack {
   frequencyHz: number | null;
   isBinaural: boolean;
   coverUrl: string;
-  videoId: string;
+  /** Nulo nos conteúdos só com áudio próprio. */
+  videoId: string | null;
   /** Áudio próprio (toca com o ecrã bloqueado). Sem ele, usa-se o YouTube. */
   audioUrl: string | null;
   durationSeconds: number | null;

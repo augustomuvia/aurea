@@ -34,7 +34,7 @@ export default async function EditContent({ params, searchParams }: { params: Pr
           title: c.title,
           slug: c.slug,
           description: c.description,
-          youtubeUrl: media?.youtube_url ?? `https://www.youtube.com/watch?v=${c.youtube_video_id}`,
+          youtubeUrl: media?.youtube_url ?? (c.youtube_video_id ? `https://www.youtube.com/watch?v=${c.youtube_video_id}` : ""),
           declaredFrequencyHz: c.declared_frequency_hz,
           durationSeconds: c.duration_seconds,
           coverUrl: c.cover_url ?? "",

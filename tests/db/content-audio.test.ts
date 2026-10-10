@@ -43,4 +43,19 @@ describe("áudio próprio dos conteúdos", () => {
     await expect(svc("update public.content_media set audio_path = '../x.mp3' where content_id = $1", [premiumId])).rejects.toThrow(/check/);
     await expect(svc("update public.content_media set audio_path = $2 where content_id = $1", [premiumId, `${premiumId}/a b.mp3`])).rejects.toThrow(/check/);
   });
+
+  it("conteúdo só com áudio (sem YouTube) é aceite e reproduzível por quem tem acesso", async () => {
+    const [c] = await svc<{ id: string }>(
+      "insert into public.content_items (slug, title, status, is_premium, published_at) values ('chuva-original', 'Chuva suave', 'published', true, now()) returning id",
+    );
+    await svc("insert into public.content_media (content_id, audio_path) values ($1::uuid, $1::text || '/1700000000001.mp3')", [c.id]);
+    const rows = await asUser<{ content_id: string; youtube_video_id: string | null }>(bob, "select content_id, youtube_video_id from public.content_media where content_id = $1", [c.id]);
+    expect(rows).toEqual([{ content_id: c.id, youtube_video_id: null }]);
+  });
+
+  it("um conteúdo precisa de pelo menos uma fonte (YouTube ou áudio)", async () => {
+    const [c] = await svc<{ id: string }>("insert into public.content_items (slug, title) values ('sem-fonte', 'Sem fonte') returning id");
+    await expect(svc("insert into public.content_media (content_id) values ($1)", [c.id])).rejects.toThrow(/content_media_has_source/);
+    await expect(svc("update public.content_media set audio_path = null, youtube_video_id = null where content_id = $1", [premiumId])).rejects.toThrow(/content_media_has_source/);
+  });
 });

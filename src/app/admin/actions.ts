@@ -212,16 +212,27 @@ export async function saveContentAction(_: unknown, formData: FormData): Promise
   if (!parsed.success) return { ok: false, error: "Verifique os campos assinalados.", fieldErrors: fieldErrors(parsed.error) };
   const v = parsed.data;
 
-  const yt = parseYouTubeUrl(v.youtubeUrl);
-  if (!yt.ok) return { ok: false, error: yt.error, fieldErrors: { youtubeUrl: [yt.error] } };
+  const svc = createServiceClient();
+  // Sem URL do YouTube: só para conteúdos que já tocam pelo áudio próprio.
+  let yt: { videoId: string; canonicalUrl: string } | null = null;
+  if (v.youtubeUrl) {
+    const parsedYt = parseYouTubeUrl(v.youtubeUrl);
+    if (!parsedYt.ok) return { ok: false, error: parsedYt.error, fieldErrors: { youtubeUrl: [parsedYt.error] } };
+    yt = parsedYt;
+  } else {
+    const { data: media } = existingId ? await svc.from("content_media").select("audio_path").eq("content_id", existingId.data).maybeSingle() : { data: null };
+    if (!media?.audio_path) {
+      const msg = "Indique o URL do YouTube, ou use Enviar áudios para criar conteúdos só com áudio próprio.";
+      return { ok: false, error: msg, fieldErrors: { youtubeUrl: [msg] } };
+    }
+  }
 
   // Verificação oficial (oEmbed): rejeita vídeos privados/inexistentes e sem incorporação.
-  const check = await checkYouTubeOEmbed(yt.videoId);
+  const check = yt ? await checkYouTubeOEmbed(yt.videoId) : ({ ok: true } as const);
   if (!check.ok && check.reason === "not_found") return { ok: false, error: "Vídeo inexistente ou privado.", fieldErrors: { youtubeUrl: ["O vídeo não está disponível publicamente."] } };
   if (!check.ok && check.reason === "not_embeddable") return { ok: false, error: "O proprietário não permite a incorporação deste vídeo.", fieldErrors: { youtubeUrl: ["Incorporação não permitida."] } };
 
-  const svc = createServiceClient();
-  const slug = v.slug || slugify(v.title) || `som-${yt.videoId.toLowerCase()}`;
+  const slug = v.slug || slugify(v.title) || `som-${Date.now().toString(36)}`;
   const row = {
     slug,
     title: v.title,
@@ -229,7 +240,7 @@ export async function saveContentAction(_: unknown, formData: FormData): Promise
     declared_frequency_hz: v.declaredFrequencyHz,
     duration_seconds: v.durationSeconds,
     cover_url: v.coverUrl || null,
-    youtube_video_id: yt.videoId,
+    youtube_video_id: yt?.videoId ?? null,
     status: v.status,
     is_premium: v.isPremium,
     is_binaural: v.isBinaural,
@@ -238,7 +249,7 @@ export async function saveContentAction(_: unknown, formData: FormData): Promise
     recommended_use: v.recommendedUse,
     tags: [...new Set(v.tags)],
     embed_error: check.ok ? null : "verification_unavailable",
-    embed_checked_at: new Date().toISOString(),
+    embed_checked_at: yt ? new Date().toISOString() : null,
   };
 
   let id: string;
@@ -261,11 +272,11 @@ export async function saveContentAction(_: unknown, formData: FormData): Promise
     id = data.id;
   }
 
-  await svc.from("content_media").upsert({ content_id: id, youtube_url: yt.canonicalUrl, youtube_video_id: yt.videoId });
+  await svc.from("content_media").upsert({ content_id: id, youtube_url: yt?.canonicalUrl ?? null, youtube_video_id: yt?.videoId ?? null });
   await svc.from("content_categories").delete().eq("content_id", id);
   if (v.categoryIds.length) await svc.from("content_categories").insert(v.categoryIds.map((category_id) => ({ content_id: id, category_id })));
 
-  await audit(admin.id, existingId ? "content.update" : "content.create", "content", id, null, { title: v.title, status: v.status, video: yt.videoId });
+  await audit(admin.id, existingId ? "content.update" : "content.create", "content", id, null, { title: v.title, status: v.status, video: yt?.videoId ?? null });
   revalidatePath("/admin/conteudos");
   revalidatePath("/app", "layout");
   if (!existingId) redirect(`/admin/conteudos/${id}?criado=1`);
@@ -292,7 +303,7 @@ export async function recheckEmbedAction(formData: FormData) {
   const id = uuid.parse(formData.get("id"));
   const svc = createServiceClient();
   const { data } = await svc.from("content_items").select("youtube_video_id").eq("id", id).maybeSingle();
-  if (!data) return;
+  if (!data?.youtube_video_id) return;
   const check = await checkYouTubeOEmbed(data.youtube_video_id);
   await svc
     .from("content_items")
@@ -482,13 +493,86 @@ export async function setContentAudioAction(input: { contentId: string; path: st
     const { data: found } = await bucket.list(contentId.data, { search: name, limit: 1 });
     if (!found?.some((f) => f.name === name)) return { ok: false, error: "O ficheiro não chegou ao servidor. Tente enviar de novo." };
   }
-  const { data: prev } = await svc.from("content_media").select("audio_path").eq("content_id", contentId.data).maybeSingle();
-  if (!prev) return { ok: false, error: "Guarde primeiro o conteúdo." };
-  const { error } = await svc.from("content_media").update({ audio_path: path }).eq("content_id", contentId.data);
+  const { data: prev } = await svc.from("content_media").select("audio_path, youtube_video_id").eq("content_id", contentId.data).maybeSingle();
+  if (!prev && !path) return { ok: true };
+  if (!path && !prev?.youtube_video_id) return { ok: false, error: "Este conteúdo só tem áudio próprio. Carregue outro ficheiro em vez de remover." };
+  const { error } = prev
+    ? await svc.from("content_media").update({ audio_path: path }).eq("content_id", contentId.data)
+    : await svc.from("content_media").insert({ content_id: contentId.data, audio_path: path });
   if (error) return { ok: false, error: "Não foi possível guardar o áudio." };
-  if (prev.audio_path && prev.audio_path !== path) await bucket.remove([prev.audio_path]);
+  if (prev?.audio_path && prev.audio_path !== path) await bucket.remove([prev.audio_path]);
   await audit(admin.id, path ? "content.audio_set" : "content.audio_remove", "content", contentId.data, null, { path });
   revalidatePath(`/admin/conteudos/${contentId.data}`);
   revalidatePath("/app", "layout");
   return { ok: true, message: path ? "Áudio guardado. Este conteúdo já toca com o ecrã bloqueado." : "Áudio removido. O conteúdo volta a usar o YouTube." };
+}
+
+// ------------------------------------------------------------------ Envio em massa (conteúdos só com áudio)
+
+const bulkAudioSchema = audioUploadSchema.omit({ contentId: true }).extend({
+  title: z.string().trim().min(2).max(140),
+  durationSeconds: z.number().int().positive().max(86400 * 2).nullable(),
+  isPremium: z.boolean(),
+  isBinaural: z.boolean(),
+  declaredFrequencyHz: z.number().positive().max(100000).nullable(),
+  categoryId: uuid.nullable(),
+});
+
+/** Passo 1 do envio em massa: cria o conteúdo (rascunho, sem YouTube) e o URL assinado para o ficheiro. */
+export async function createAudioContentAction(input: z.input<typeof bulkAudioSchema>): Promise<ActionResult<{ contentId: string; path: string; token: string }>> {
+  const admin = await assertSuperAdmin();
+  const parsed = bulkAudioSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Ficheiro ou dados inválidos (MP3/M4A até 50 MB)." };
+  const v = parsed.data;
+  const svc = createServiceClient();
+  const slug = `${(slugify(v.title) || "som").slice(0, 80)}-${Math.random().toString(36).slice(2, 7)}`;
+  const { data: item, error } = await svc
+    .from("content_items")
+    .insert({
+      slug,
+      title: v.title,
+      status: "draft",
+      is_premium: v.isPremium,
+      is_binaural: v.isBinaural,
+      declared_frequency_hz: v.declaredFrequencyHz,
+      duration_seconds: v.durationSeconds,
+      youtube_video_id: null,
+      created_by: admin.id,
+    })
+    .select("id")
+    .single();
+  if (error || !item) return { ok: false, error: "Não foi possível criar o conteúdo. Confirme que as migrações de áudio foram aplicadas." };
+  if (v.categoryId) await svc.from("content_categories").insert({ content_id: item.id, category_id: v.categoryId });
+  const ext = /\.m4a$/i.test(v.fileName) ? "m4a" : /\.aac$/i.test(v.fileName) ? "aac" : "mp3";
+  const { data: up } = await svc.storage.from(CONTENT_AUDIO_BUCKET).createSignedUploadUrl(`${item.id}/${Date.now()}.${ext}`);
+  if (!up) {
+    await svc.from("content_items").delete().eq("id", item.id);
+    return { ok: false, error: "Não foi possível preparar o envio." };
+  }
+  return { ok: true, data: { contentId: item.id, path: up.path, token: up.token } };
+}
+
+/** Passo 2: associa o ficheiro enviado e, se pedido, publica. */
+export async function finishAudioContentAction(input: { contentId: string; path: string; publish: boolean }): Promise<ActionResult> {
+  const admin = await assertSuperAdmin();
+  const saved = await setContentAudioAction({ contentId: input.contentId, path: input.path });
+  if (!saved.ok) return saved;
+  if (input.publish) {
+    await createServiceClient().from("content_items").update({ status: "published", published_at: new Date().toISOString() }).eq("id", input.contentId);
+    await audit(admin.id, "content.publish", "content", input.contentId, null, { via: "bulk_audio" });
+  }
+  revalidatePath("/admin/conteudos");
+  revalidatePath("/app", "layout");
+  return { ok: true };
+}
+
+/** Se o envio do ficheiro falhar, apaga o rascunho criado no passo 1 (só se continuar sem fonte). */
+export async function discardAudioContentAction(contentId: string): Promise<void> {
+  await assertSuperAdmin();
+  const id = uuid.safeParse(contentId);
+  if (!id.success) return;
+  const svc = createServiceClient();
+  const { data: media } = await svc.from("content_media").select("content_id").eq("content_id", id.data).maybeSingle();
+  if (media) return;
+  await svc.from("content_items").delete().eq("id", id.data).eq("status", "draft").is("youtube_video_id", null);
 }
