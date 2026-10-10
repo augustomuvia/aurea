@@ -9,6 +9,7 @@ import { getEmailProvider, type EmailProvider } from "./providers";
 import { renderVerificationEmail } from "./render";
 import { samplePayload, luandaDate, luandaHour } from "./vars";
 import type { TemplateContent, TemplateKey } from "./templates";
+import { jobAttachments } from "@/lib/receipts/server";
 
 let providerSingleton: { key: string; p: EmailProvider } | null = null;
 /** Reutiliza o fornecedor (e o token de acesso em cache) entre pedidos da mesma instância. */
@@ -103,6 +104,7 @@ export async function runQueue(opts: { limit?: number; jobId?: string; deadlineM
     jobId: opts.jobId,
     deadline: opts.deadlineMs ? Date.now() + opts.deadlineMs : undefined,
     worker: `vercel:${process.env.VERCEL_REGION ?? "local"}`,
+    attachments: (job) => jobAttachments(job, settings, svc),
   });
 }
 

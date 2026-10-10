@@ -142,7 +142,15 @@ export function diagnoseGoogleEnv(env: Env = process.env): GoogleEnvCheck[] {
   const idOk = !!id && /^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/.test(id);
   return [
     { key: "EMAIL_PROVIDER", ok: clean.EMAIL_PROVIDER === "gmail", detail: clean.EMAIL_PROVIDER ? `"${clean.EMAIL_PROVIDER}"${note("EMAIL_PROVIDER")}` : "em falta" },
-    { key: "GOOGLE_CLIENT_ID", ok: idOk, detail: id ? `${id}${idOk ? "" : " (formato inesperado)"}${note("GOOGLE_CLIENT_ID")}` : "em falta" },
+    {
+      key: "GOOGLE_CLIENT_ID",
+      ok: idOk,
+      detail: id
+        ? idOk
+          ? `${id}${note("GOOGLE_CLIENT_ID")}`
+          : `formato inesperado (${id.length} caracteres${id.startsWith("GOCSPX-") ? ", parece a chave secreta" : id.startsWith("1//") ? ", parece o refresh token" : ""}); deve terminar em .apps.googleusercontent.com`
+        : "em falta",
+    },
     {
       key: "GOOGLE_CLIENT_SECRET",
       ok: !!secret && secret.startsWith("GOCSPX-"),

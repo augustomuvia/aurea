@@ -15,6 +15,7 @@ export type TemplateKey =
   | "admin_payment_requested"
   | "admin_payment_confirmed"
   | "plan_activated"
+  | "payment_receipt"
   | "expiring_10"
   | "expiring_5"
   | "expiring_3"
@@ -279,7 +280,7 @@ export const TEMPLATES: Record<TemplateKey, TemplateDef> = {
       ["Expira em", "data_expiracao"],
       ["Referência", "referencia_pagamento"],
     ],
-    footnote: RENEWAL_NOTE,
+    footnote: `O recibo deste pagamento segue em anexo (PDF). ${RENEWAL_NOTE}`,
     defaults: {
       subject: "O seu plano AUREA está ativo!",
       heading: "Está tudo pronto",
@@ -289,6 +290,37 @@ export const TEMPLATES: Record<TemplateKey, TemplateDef> = {
         "O seu plano {{plano}} é válido até {{data_expiracao}}. Pode consultar a assinatura em {{link_assinatura}}.",
       ].join("\n\n"),
       cta_label: "Abrir a biblioteca",
+    },
+  },
+
+  payment_receipt: {
+    key: "payment_receipt",
+    name: "Pagamento confirmado com recibo (clientes atuais)",
+    audience: "customer",
+    trigger: "Envio manual em Notificações → Clientes atuais, para pagamentos confirmados cujo cliente ainda não recebeu o e-mail de confirmação. Leva o recibo em PDF.",
+    flag: "plan_activated",
+    ctaLink: "link_conta",
+    required: ["referencia_pagamento"],
+    details: [
+      ["Referência", "referencia_pagamento"],
+      ["Plano", "plano"],
+      ["Duração", "duracao"],
+      ["Valor pago", "valor"],
+      ["Método", "metodo"],
+      ["Confirmado em", "data_confirmacao"],
+      ["Início do período", "data_ativacao"],
+      ["Fim do período", "data_expiracao"],
+    ],
+    footnote: "O recibo segue em anexo (PDF). É um comprovativo de pagamento emitido pela AUREA e não substitui fatura fiscal. Para qualquer questão, escreva para {{email_suporte}}.",
+    defaults: {
+      subject: "Pagamento confirmado — recibo {{referencia_pagamento}}",
+      heading: "Pagamento confirmado",
+      body: [
+        "{{saudacao}},",
+        "Confirmamos a receção do seu pagamento do pedido {{referencia_pagamento}} ({{plano}}, {{valor}}). Obrigado por escolher a AUREA.",
+        "Enviamos em anexo o recibo deste pagamento, para os seus registos. Pode consultar todos os seus pagamentos e o estado da assinatura na sua conta.",
+      ].join("\n\n"),
+      cta_label: "Abrir a minha conta",
     },
   },
 

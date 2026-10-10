@@ -4,6 +4,7 @@ const TABS = [
   { href: "/admin/notificacoes", label: "Estado e configurações" },
   { href: "/admin/notificacoes/modelos", label: "Modelos" },
   { href: "/admin/notificacoes/historico", label: "Histórico" },
+  { href: "/admin/notificacoes/clientes", label: "Clientes atuais" },
 ];
 
 export function NotificationTabs({ current }: { current: string }) {

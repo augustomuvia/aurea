@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { renderEmail, validateTemplate } from "@/lib/notifications/render";
 import { TEMPLATE_KEYS, TEMPLATES } from "@/lib/notifications/templates";
 import { buildVars, luandaDaysUntil, samplePayload } from "@/lib/notifications/vars";
-import { buildMime, encodeHeader } from "@/lib/notifications/mime";
+import { buildMime, encodeHeader, filenameParams } from "@/lib/notifications/mime";
+import { buildReceiptPdf, receiptFromPayload } from "@/lib/receipts/receipt";
 import { cleanEnvValue, diagnoseGoogleEnv, getEmailProvider, gmailProvider } from "@/lib/notifications/providers";
 
 const opts = { siteUrl: "https://www.aurea-som.site", supportEmail: "suporte@aurea-som.site" };
@@ -82,6 +83,39 @@ describe("MIME", () => {
     expect(raw).toContain('Content-Type: text/html; charset="UTF-8"');
   });
 
+  it("com anexos: multipart/mixed com a mensagem e o PDF em base64 (linhas de 76)", () => {
+    const pdf = buildReceiptPdf(receiptFromPayload(samplePayload("payment_receipt"), { ...opts, demo: true }));
+    const base = { from: { name: "AUREA", email: "suporte@aurea-som.site" }, to: "cliente@exemplo.ao", subject: "Recibo", text: "Olá", html: "<p>Olá</p>" };
+    const plain = buildMime(base);
+    expect(plain).not.toContain("multipart/mixed");
+    expect(buildMime({ ...base, attachments: [] })).not.toContain("multipart/mixed");
+
+    const raw = buildMime({ ...base, attachments: [{ filename: "Recibo-AUR-DEMO0000.pdf", contentType: "application/pdf", content: pdf }] });
+    const mixed = /Content-Type: multipart\/mixed; boundary="(aurea_mx_[0-9a-f]+)"/.exec(raw)![1];
+    const alt = /Content-Type: multipart\/alternative; boundary="(aurea_[0-9a-f]+)"/.exec(raw)![1];
+    const parts = raw.split(`--${mixed}`);
+    expect(parts).toHaveLength(4); // cabeçalhos, alternativa, anexo, fim
+    expect(parts[1]).toContain(`--${alt}--`);
+    expect(parts[2]).toContain('Content-Type: application/pdf; name="Recibo-AUR-DEMO0000.pdf"');
+    expect(parts[2]).toContain('Content-Disposition: attachment; filename="Recibo-AUR-DEMO0000.pdf"');
+    expect(parts[3]).toBe("--\r\n");
+    const body = parts[2].split("\r\n\r\n")[1].trim();
+    expect(body.split("\r\n").every((l) => l.length <= 76)).toBe(true);
+    expect(Buffer.from(body.replace(/\r\n/g, ""), "base64").equals(Buffer.from(pdf))).toBe(true);
+    expect(raw.split("\r\n").every((l) => l.length <= 998)).toBe(true);
+  });
+
+  it("nome de ficheiro seguro (RFC 2231) e recusa anexos inválidos", () => {
+    expect(filenameParams("filename", "Recibo-AUR-1.pdf")).toBe('filename="Recibo-AUR-1.pdf"');
+    expect(filenameParams("filename", "Recibo ção.pdf")).toBe(`filename="Recibo cao.pdf"; filename*=UTF-8''Recibo%20%C3%A7%C3%A3o.pdf`);
+    const inj = filenameParams("filename", 'a"\r\nBcc: x.pdf');
+    expect(inj).not.toMatch(/[\r\n]/);
+    expect(inj.split('"')).toHaveLength(3);
+    const m = { from: { name: "AUREA", email: "suporte@aurea-som.site" }, to: "a@b.ao", subject: "x", text: "x", html: "x" };
+    expect(() => buildMime({ ...m, attachments: [{ filename: "a.pdf", contentType: "application/pdf\r\nX: y", content: new Uint8Array(1) }] })).toThrow();
+    expect(() => buildMime({ ...m, attachments: [{ filename: "a.pdf", contentType: "application/pdf", content: new Uint8Array(4 * 1024 * 1024) }] })).toThrow(/demasiado grandes/);
+  });
+
   it("impede injeção de cabeçalhos e endereços inválidos", () => {
     const m = { from: { name: "AUREA", email: "suporte@aurea-som.site" }, to: "a@b.ao", subject: "x", text: "x", html: "x" };
     expect(() => buildMime({ ...m, subject: "x\r\nBcc: alvo@x.com" })).toThrow();
@@ -123,6 +157,19 @@ describe("Gmail API", () => {
     expect(decoded).toContain('From: "AUREA | Suporte" <suporte@aurea-som.site>');
   });
 
+  it("envia mensagens com o recibo anexado (raw muito abaixo do limite do Gmail)", async () => {
+    let raw = "";
+    const { f } = fakeFetch({ send: (b) => ((raw = b.raw), Response.json({ id: "18c0ffee" })) });
+    const pdf = buildReceiptPdf(receiptFromPayload(samplePayload("plan_activated"), { ...opts, demo: true }));
+    const r = await gmailProvider(env, f).send({ ...msg, attachments: [{ filename: "Recibo-AUR-DEMO0000.pdf", contentType: "application/pdf", content: pdf }] });
+    expect(r.ok).toBe(true);
+    expect(raw).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(raw.length).toBeLessThan(100_000);
+    const decoded = Buffer.from(raw.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+    expect(decoded).toContain("multipart/mixed");
+    expect(decoded).toContain('filename="Recibo-AUR-DEMO0000.pdf"');
+  });
+
   it("classifica erros: credenciais (configuração), 5xx (repetir) e 400 (definitivo)", async () => {
     const bad = await gmailProvider(env, fakeFetch({ token: () => Response.json({ error: "invalid_grant" }, { status: 400 }) }).f).send(msg);
     expect(bad).toMatchObject({ ok: false, permanent: false, config: true });
@@ -162,6 +209,9 @@ describe("Gmail API", () => {
     expect(text).toContain("espaços");
     expect(text).not.toContain("supersecret");
     expect(text).not.toContain("verysecrettoken");
-    expect(diagnoseGoogleEnv({ EMAIL_PROVIDER: "gmail", GOOGLE_CLIENT_ID: "GOCSPX-oops" })[1].ok).toBe(false);
+    const swapped = diagnoseGoogleEnv({ EMAIL_PROVIDER: "gmail", GOOGLE_CLIENT_ID: "GOCSPX-oopssecret" })[1];
+    expect(swapped.ok).toBe(false);
+    expect(swapped.detail).toContain("parece a chave secreta");
+    expect(swapped.detail).not.toContain("oopssecret");
   });
 });

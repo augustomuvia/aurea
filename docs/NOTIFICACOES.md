@@ -41,6 +41,29 @@ Ação na app (registo, pedido, comprovativo, aprovação)        Agendador diá
 
 Repetir a aprovação do mesmo pagamento devolve `already_confirmed`: não há novo período, nem novos e-mails.
 
+### Recibo de pagamento (PDF)
+
+O e-mail "O seu plano AUREA está ativo!" (`plan_activated`, a confirmação de pagamento ao cliente) e o envio aos clientes atuais (`payment_receipt`) levam em anexo `Recibo-AUR-XXXXXXXX.pdf`. O PDF é gerado pelo servidor no momento do envio (`src/lib/pdf/writer.ts`, sem dependências; `src/lib/receipts/`), com os dados atuais da base de dados: referência, data de emissão, cliente, plano e duração, valor em Kz, Multicaixa Express, transação, datas do pedido, da confirmação e do período. Nada é guardado. Se o pagamento tiver sido revertido entretanto, o e-mail é descartado; se o PDF não puder ser gerado, o e-mail não sai sem ele e é tentado de novo.
+
+- O documento chama-se **"Recibo de pagamento"** e não "Fatura": em Angola, as faturas têm de ser emitidas por software de faturação certificado pela AGT. O rodapé diz "Documento emitido pela AUREA como comprovativo de pagamento. Não substitui fatura fiscal."
+- Nome, NIF e morada da empresa só aparecem se estiverem preenchidos em `platform_settings` → `legal` (`company_name`, `nif`, `address`).
+- O admin vê ou descarrega o recibo em `/admin/pagamentos/<id>` (pagamentos confirmados). O cliente descarrega o seu em Conta → Pagamentos ("Recibo (PDF)").
+- Os envios de teste dos modelos levam um recibo marcado "DEMONSTRAÇÃO".
+
+### Enviar aos clientes atuais (migração `20261010000500_backfill_receipts.sql`)
+
+Para quem já estava na plataforma antes dos e-mails automáticos: `/admin/notificacoes/clientes`.
+
+1. Executar a migração `supabase/migrations/20261010000500_backfill_receipts.sql` no SQL Editor (idempotente; só funções, sem tabelas novas nem alterações de dados).
+2. A integração tem de estar **Ativa** e o modo de teste **desligado** (em modo de teste os e-mails a clientes seriam descartados).
+3. A página mostra, calculado no servidor, o número exato de destinatários e alguns endereços:
+   - **Boas-vindas**: contas com e-mail confirmado, ativas, sem papel de administrador, sem nenhum e-mail de boas-vindas registado.
+   - **Pagamento confirmado com recibo**: pagamentos confirmados de contas ativas (sem administradores) que ainda não têm e-mail "plano ativado" nem "pagamento confirmado com recibo". Pedidos pendentes, rejeitados e revertidos ficam de fora.
+4. Para enviar, escrever o número de destinatários e confirmar. Os e-mails entram na fila (chaves `backfill:welcome:<utilizador>` e `backfill:payment:<pagamento>`) e sai já um primeiro lote de 50; o resto sai nos processamentos seguintes. Repetir não duplica nada: a segunda vez mostra 0 destinatários. Fica registado na Auditoria (`notifications.backfill`).
+5. Na fila, os e-mails transacionais (pedidos novos, confirmações) passam sempre à frente destes envios.
+
+Os envios de teste nunca contam como "já recebeu". Um e-mail que falhou continua a contar: pode ser repetido no Histórico. O Google Workspace limita cada conta a cerca de 2.000 mensagens por dia.
+
 ### Avisos de expiração
 
 - Os dias contam-se em datas de calendário de Africa/Luanda. Uma assinatura que expira dia 20 recebe avisos nos dias 10, 15, 17 e 19.
@@ -56,6 +79,7 @@ Repetir a aprovação do mesmo pagamento devolve `already_confirmed`: não há n
 ### 1. Supabase
 
 1. SQL Editor → colar e executar `supabase/migrations/20261010000400_notifications.sql`. É idempotente: pode ser executada de novo sem perder dados.
+2. Depois, `supabase/migrations/20261010000500_backfill_receipts.sql` (envio aos clientes atuais, prioridade da fila e revalidação dos recibos). Também idempotente. Se voltar a executar a 0400, execute de seguida a 0500 (a 0500 substitui duas funções da 0400).
 
 ### 2. Google Cloud: cliente OAuth com acesso apenas a enviar e-mails
 
@@ -135,6 +159,8 @@ Sem estes segredos o workflow termina sem fazer nada. Com ele, a "hora diária d
 `npm test` executa, contra as migrações reais (PGlite):
 
 - `tests/db/notifications.test.ts`: boas-vindas única, pedido e instruções, pendente sem confirmação, aprovação (e-mails, notificações, auditoria), aprovação repetida, avisos 10/5/3/1, unicidade por marco (incluindo processamentos simultâneos), renovação, prolongamento, expirado opcional, falha do fornecedor e novas tentativas, falha definitiva e nova colocação na fila, modo de teste, isolamento entre clientes e permissões.
-- `tests/unit/notifications.test.ts`: validação de modelos e variáveis, escape de HTML, datas em Africa/Luanda, MIME e cliente Gmail API (com `fetch` simulado; não faz chamadas reais).
+- `tests/unit/notifications.test.ts`: validação de modelos e variáveis, escape de HTML, datas em Africa/Luanda, MIME (com e sem anexos) e cliente Gmail API (com `fetch` simulado; não faz chamadas reais).
+- `tests/unit/pdf.test.ts`: estrutura do PDF (cabeçalho, xref, startxref, comprimentos), acentos em WinAnsi e conteúdo do recibo.
+- `tests/db/backfill.test.ts`: totais da pré-visualização, permissões, confirmação pelo número, idempotência (a segunda vez coloca 0), exclusão de quem já recebeu, de pagamentos não confirmados ou revertidos, prioridade da fila e envio com o PDF anexado.
 
 Os testes 17 e 18 da especificação (deploy e agendamento em produção) só podem ser confirmados na Vercel, com a checklist acima.

@@ -2,6 +2,7 @@ import { renderEmail } from "./render";
 import { isTemplateKey, TEMPLATES, type TemplateContent, type TemplateKey } from "./templates";
 import { buildVars, type JobPayload } from "./vars";
 import type { EmailProvider } from "./providers";
+import type { MimeAttachment } from "./mime";
 
 /**
  * Motor da fila: reclama trabalhos, revalida-os, renderiza, envia e regista o
@@ -16,6 +17,8 @@ export interface EmailJob {
   template_key: string;
   audience: "customer" | "admin";
   to_email: string;
+  user_id?: string | null;
+  payment_id?: string | null;
   payload: JobPayload & Record<string, unknown>;
   status: JobStatus;
   attempts: number;
@@ -98,6 +101,8 @@ export async function processQueue(opts: {
   deadline?: number;
   worker?: string;
   now?: () => Date;
+  /** Anexos gerados no momento do envio (ex.: recibo em PDF). Nada fica guardado na fila. */
+  attachments?: (job: EmailJob) => Promise<MimeAttachment[]>;
 }): Promise<QueueRunResult> {
   const { repo, provider, settings } = opts;
   const out: QueueRunResult = { active: opts.active, claimed: 0, sent: 0, retry: 0, failed: 0, skipped: 0 };
@@ -151,6 +156,14 @@ export async function processQueue(opts: {
       await count(out, repo.complete(job.id, "failed", { error: `Erro ao preparar o e-mail: ${e instanceof Error ? e.message : e}`, permanent: true }));
       continue;
     }
+    let attachments: MimeAttachment[] = [];
+    try {
+      attachments = opts.attachments ? await opts.attachments(job) : [];
+    } catch (e) {
+      // Sem o anexo (ex.: recibo) o e-mail não sai incompleto: tenta de novo mais tarde.
+      await count(out, repo.complete(job.id, "failed", { error: `Erro ao gerar o anexo: ${e instanceof Error ? e.message : e}`, permanent: false }));
+      continue;
+    }
     const started = Date.now();
     let r;
     try {
@@ -162,6 +175,7 @@ export async function processQueue(opts: {
         text: rendered.text,
         html: rendered.html,
         headers: { "X-AUREA-Job": job.id },
+        ...(attachments.length ? { attachments } : {}),
       });
     } catch (e) {
       r = { ok: false as const, error: e instanceof Error ? e.message : "Erro inesperado", permanent: false };
