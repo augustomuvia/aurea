@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CreditCard, Film, Layers, LogOut, Settings, ShieldCheck, Users, BadgeCheck, ArrowLeft, BookOpen } from "lucide-react";
+import { BarChart3, CreditCard, Film, Layers, LogOut, Settings, ShieldCheck, Users, BadgeCheck, ArrowLeft, BookOpen, Bell } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { logoutAction } from "@/app/(site)/(auth)/actions";
 
@@ -13,11 +13,12 @@ const LINKS = [
   { href: "/admin/pagamentos", label: "Pagamentos", icon: CreditCard },
   { href: "/admin/planos", label: "Planos", icon: Layers },
   { href: "/admin/ebook", label: "E-book", icon: BookOpen },
+  { href: "/admin/notificacoes", label: "Notificações", icon: Bell },
   { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
   { href: "/admin/auditoria", label: "Auditoria", icon: ShieldCheck },
 ];
 
-export function AdminNav({ email, pending }: { email: string; pending: number }) {
+export function AdminNav({ email, pending, alerts = 0 }: { email: string; pending: number; alerts?: number }) {
   const pathname = usePathname();
   const isActive = (href: string, exact?: boolean) => (exact ? pathname === href : pathname.startsWith(href));
   return (
@@ -41,6 +42,9 @@ export function AdminNav({ email, pending }: { email: string; pending: number })
                 >
                   <l.icon className={`h-4 w-4 ${on ? "text-gold" : ""}`} />
                   {l.label}
+                  {l.href === "/admin/notificacoes" && alerts > 0 && (
+                    <span className="ml-auto rounded-full bg-danger/80 px-1.5 text-[0.66rem] font-semibold tabular-nums text-ink">{alerts}</span>
+                  )}
                   {l.href === "/admin/pagamentos" && pending > 0 && (
                     <span className="ml-auto rounded-full bg-gold px-1.5 text-[0.66rem] font-semibold tabular-nums text-ink">{pending}</span>
                   )}

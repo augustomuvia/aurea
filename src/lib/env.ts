@@ -43,14 +43,8 @@ export const serverEnv = {
   get cronSecret() {
     return process.env.CRON_SECRET ?? "";
   },
-  get resendApiKey() {
-    return process.env.RESEND_API_KEY ?? "";
-  },
   /** Domínios autorizados para o checkout do e-book (ex.: "kursinha.com"). Vazio: qualquer domínio HTTPS válido. */
   get ebookCheckoutHosts(): string[] {
     return (process.env.EBOOK_CHECKOUT_ALLOWED_HOSTS ?? "").split(",").map((h) => h.trim()).filter(Boolean);
-  },
-  get emailFrom() {
-    return process.env.EMAIL_FROM ?? "";
   },
 };

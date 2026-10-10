@@ -11,6 +11,7 @@ import { getProvider } from "@/lib/payments/providers";
 import { fieldErrors, reportPaymentSchema } from "@/lib/validation";
 import { detectProofKind, PROOF_BUCKET, PROOF_MAX_BYTES } from "@/lib/payments/proof";
 import type { ActionResult } from "@/lib/types";
+import { kickQueue } from "@/lib/notifications/server";
 
 async function activeUser() {
   const user = await getSessionUser();
@@ -39,6 +40,7 @@ export async function createOrderAction(_: unknown, formData: FormData): Promise
     console.error("[checkout] create_payment_order", error?.message);
     return { ok: false, error: "Não foi possível criar o pedido. Tente novamente." };
   }
+  kickQueue();
   revalidatePath("/app/pagamentos");
   redirect(`/checkout/estado?ref=${data.reference}`);
 }
@@ -62,6 +64,7 @@ export async function reportPaymentAction(_: unknown, formData: FormData): Promi
     if (error.message.includes("payment_not_pending")) return { ok: false, error: "Este pedido já não está pendente." };
     return { ok: false, error: "Não foi possível registar a informação. Tente novamente." };
   }
+  kickQueue();
   revalidatePath("/checkout/estado");
   return { ok: true, message: "Recebemos os dados do comprovativo. O acesso será ativado após a verificação do pagamento." };
 }
@@ -104,6 +107,7 @@ export async function uploadProofAction(_: unknown, formData: FormData): Promise
   }
   // O ficheiro anterior (se o cliente substituiu) deixa de ser necessário; o evento fica no histórico.
   if (payment.proof_path && payment.proof_path !== path) await svc.storage.from(PROOF_BUCKET).remove([payment.proof_path]);
+  kickQueue();
   revalidatePath("/checkout/estado");
   return { ok: true, message: "Comprovativo recebido. O acesso será ativado após a verificação do pagamento." };
 }

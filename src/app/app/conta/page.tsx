@@ -29,6 +29,7 @@ export default async function AccountPage() {
           preferredCategories: (prefs?.preferred_categories as string[]) ?? [],
           marketingConsent: Boolean(prefs?.marketing_consent),
           analyticsConsent: Boolean(prefs?.analytics_consent),
+          reminderEmails: prefs?.reminder_emails !== false,
         }}
       />
     </>
