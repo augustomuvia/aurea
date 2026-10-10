@@ -9,7 +9,7 @@
 ## 2. Vercel
 1. Importar o repositório `augustomuvia/aurea` (framework Next.js, comandos por omissão).
 2. Em **Settings → Environment Variables**, definir as variáveis da tabela do README para *Production* (e *Preview* com um projeto Supabase separado, se possível).
-3. `CRON_SECRET`: gerar um valor aleatório longo (`openssl rand -hex 32`). O cron em `vercel.json` corre de hora a hora.
+3. `CRON_SECRET`: gerar um valor aleatório longo (`openssl rand -hex 32`). O cron em `vercel.json` corre uma vez por dia (04:00 UTC), o limite do plano Hobby; o acesso premium já é negado na BD assim que `expires_at` passa, o cron só atualiza estados e pedidos pendentes.
 4. Deploy.
 
 ### Alternativa: integração Supabase da Vercel
