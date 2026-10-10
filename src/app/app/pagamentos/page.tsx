@@ -37,6 +37,11 @@ export default async function PaymentsPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <Badge tone={TONE[p.status]}>{PAYMENT_STATUS_LABEL[p.status]}</Badge>
+                  {p.status === "confirmed" && (
+                    <a href={`/app/pagamentos/${p.id}/recibo`} target="_blank" rel="noopener noreferrer" className="text-sm text-gold-light underline-offset-4 hover:underline">
+                      Recibo (PDF)
+                    </a>
+                  )}
                   {p.status === "pending" && (
                     <Link href={`/checkout/estado?ref=${p.reference}`} className="text-sm text-gold-light underline-offset-4 hover:underline">
                       Ver instruções

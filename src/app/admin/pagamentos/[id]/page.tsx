@@ -118,6 +118,23 @@ export default async function AdminPaymentDetail({ params }: { params: Promise<{
           )}
           {p.status === "confirmed" && (
             <section className="glass p-6">
+              <h2 className="font-serif text-2xl text-paper">Recibo de pagamento</h2>
+              <p className="mt-1 text-sm text-mute">PDF gerado no momento, igual ao que o cliente recebe em anexo. Comprovativo de pagamento; não substitui fatura fiscal.</p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <a href={`/admin/pagamentos/${p.id}/recibo`} target="_blank" rel="noopener noreferrer" className="press glass inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm text-paper">
+                  <FileText className="h-4 w-4 text-gold" /> Ver recibo
+                </a>
+                <a href={`/admin/pagamentos/${p.id}/recibo?download=1`} className="press glass inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm text-paper">
+                  Descarregar PDF
+                </a>
+                <Link href={`/admin/notificacoes/historico?pagamento=${p.id}`} className="inline-flex h-10 items-center text-sm text-gold-light hover:underline">
+                  E-mails deste pagamento
+                </Link>
+              </div>
+            </section>
+          )}
+          {p.status === "confirmed" && (
+            <section className="glass p-6">
               <h2 className="font-serif text-2xl text-paper">Correção (reversão)</h2>
               <p className="mt-1 text-sm text-mute">Para estornos ou confirmações feitas por engano. O histórico é mantido e o período concedido é removido.</p>
               <ActionForm action={reversePaymentAction} className="mt-4 space-y-4">

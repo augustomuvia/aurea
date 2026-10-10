@@ -17,6 +17,8 @@ export const EVENT_LABEL: Record<string, string> = {
   "subscription.activated": "Plano ativado",
   "subscription.expiring": "Aviso de expiração",
   "subscription.expired": "Assinatura expirada",
+  "backfill.welcome": "Boas-vindas (clientes atuais)",
+  "backfill.payment_receipt": "Pagamento confirmado com recibo (clientes atuais)",
   "integration.verification": "Verificação da integração",
   test: "Envio de teste",
 };

@@ -7,7 +7,7 @@ import { audit } from "@/lib/audit";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { DEFAULT_NOTIFICATION_SETTINGS } from "@/lib/notifications/engine";
 import { renderEmail, validateTemplate } from "@/lib/notifications/render";
-import { confirmVerificationCode, getIntegration, getNotificationSettings, runScheduler, sendTemplateTest, sendVerificationEmail } from "@/lib/notifications/server";
+import { confirmVerificationCode, getIntegration, getNotificationSettings, runQueue, runScheduler, sendTemplateTest, sendVerificationEmail } from "@/lib/notifications/server";
 import { isTemplateKey, TEMPLATES, type TemplateContent } from "@/lib/notifications/templates";
 import { buildVars, samplePayload } from "@/lib/notifications/vars";
 import { isValidEmail } from "@/lib/notifications/mime";
@@ -226,4 +226,52 @@ export async function markAdminNotificationsReadAction(formData: FormData) {
   if (typeof id === "string" && z.string().uuid().safeParse(id).success) q = q.eq("id", id);
   await q;
   revalidatePath("/admin", "layout");
+}
+
+const BACKFILL_ERRORS: Record<string, string> = {
+  forbidden: "Sem permissão.",
+  invalid_kind: "Tipo de envio inválido.",
+  disabled: "Este tipo de e-mail está desativado em Configurações. Ative-o primeiro.",
+  test_mode: "O modo de teste está ativo: os e-mails para clientes seriam descartados. Desative-o antes de enviar.",
+};
+
+/**
+ * Envio aos clientes atuais: coloca os e-mails na fila (a função SQL escolhe os
+ * destinatários e impede duplicados) e processa já um primeiro lote. O admin
+ * confirma escrevendo o número exato de destinatários.
+ */
+export async function enqueueBackfillAction(_: unknown, formData: FormData): Promise<ActionResult> {
+  const admin = await assertSuperAdmin();
+  const kind = z.enum(["welcome", "payment"]).safeParse(formData.get("kind"));
+  if (!kind.success) return { ok: false, error: "Tipo de envio inválido." };
+  const typed = String(formData.get("confirm") ?? "").trim();
+  if (!/^\d{1,6}$/.test(typed)) return { ok: false, error: "Para confirmar, escreva o número de destinatários." };
+  const { status } = await getIntegration();
+  if (status.code !== "active") {
+    return { ok: false, error: `${status.label}. Nada foi colocado na fila: ative a integração antes de enviar aos clientes atuais.` };
+  }
+  const { data, error } = await createServiceClient().rpc("notif_backfill_enqueue", { p_actor: admin.id, p_kind: kind.data, p_expected: Number(typed) });
+  const r = data as { ok: boolean; error?: string; eligible?: number; enqueued?: number } | null;
+  if (error || !r) return { ok: false, error: "Não foi possível colocar na fila. A migração 20261010000500_backfill_receipts.sql já foi executada?" };
+  if (!r.ok) {
+    if (r.error === "count_changed") {
+      return { ok: false, error: `O número escrito não corresponde aos destinatários atuais (${r.eligible}). Confirme de novo com ${r.eligible}.` };
+    }
+    return { ok: false, error: BACKFILL_ERRORS[r.error ?? ""] ?? "Não foi possível colocar na fila." };
+  }
+  revalidatePath("/admin/notificacoes/clientes");
+  if (!r.enqueued) return { ok: true, message: "Nada a enviar: todos os destinatários já têm este e-mail registado." };
+
+  // Primeiro lote já; o resto sai nos processamentos seguintes (agendador ou "Processar agora").
+  let q: Awaited<ReturnType<typeof runQueue>> = null;
+  try {
+    q = await runQueue({ limit: 50, deadlineMs: 40_000 });
+  } catch (e) {
+    console.error("[email] envio aos clientes atuais: primeiro lote falhou; fica na fila", e instanceof Error ? e.message : e);
+  }
+  revalidatePath("/admin/notificacoes");
+  return {
+    ok: true,
+    message: `${r.enqueued} e-mail(s) colocados na fila.${q ? ` Primeiro lote: ${q.sent} enviado(s), ${q.retry} a repetir, ${q.failed} falhado(s), ${q.skipped} não enviado(s).` : ""} Os restantes saem nos próximos processamentos (lotes de 50).`,
+  };
 }

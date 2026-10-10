@@ -65,7 +65,7 @@ const STATUS: Record<string, string> = {
 };
 const METHOD: Record<string, string> = { multicaixa_express: "Multicaixa Express", manual_grant: "Acesso concedido manualmente" };
 
-function duration(months: number | null | undefined) {
+export function planDuration(months: number | null | undefined) {
   if (!months) return "";
   if (months % 12 === 0) return months === 12 ? "1 ano" : `${months / 12} anos`;
   return months === 1 ? "1 mês" : `${months} meses`;
@@ -92,7 +92,7 @@ export function buildVars(key: TemplateKey, p: JobPayload, ctx: VarContext): Var
     nome_completo: (p.nome ?? "").trim() || (p.email ?? ""),
     email: p.email ?? "",
     plano: p.plan ?? "",
-    duracao: duration(p.duration_months),
+    duracao: planDuration(p.duration_months),
     valor: p.amount_minor != null && p.amount_minor !== "" ? formatKz(BigInt(p.amount_minor)) : "",
     referencia_pagamento: ref,
     id_pedido: p.payment_id ?? "",
@@ -141,7 +141,7 @@ export function samplePayload(key: TemplateKey, now: Date = new Date()): JobPayl
     duration_months: 1,
     created_at: now.toISOString(),
     confirmed_at: now.toISOString(),
-    status: key === "admin_payment_confirmed" || key === "plan_activated" ? "confirmed" : "pending",
+    status: key === "admin_payment_confirmed" || key === "plan_activated" || key === "payment_receipt" ? "confirmed" : "pending",
     previous_status: "pending",
     method: "multicaixa_express",
     transaction_id: "DEMO-TRANSACAO",
