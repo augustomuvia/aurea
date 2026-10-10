@@ -125,7 +125,42 @@ export async function markNotificationsRead(): Promise<void> {
   const user = await activeUser();
   const supabase = await createClient();
   await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("user_id", user.id).is("read_at", null);
-  revalidatePath("/app");
+  revalidatePath("/app", "layout");
+}
+
+export async function markNotificationRead(formData: FormData): Promise<void> {
+  const user = await activeUser();
+  const id = uuid.safeParse(formData.get("id"));
+  if (!id.success) return;
+  const supabase = await createClient();
+  // RLS: só as notificações do próprio utilizador podem ser alteradas.
+  await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id.data).eq("user_id", user.id).is("read_at", null);
+  revalidatePath("/app", "layout");
+}
+
+/** Marca como lida e abre a página relacionada (apenas caminhos internos). */
+export async function openNotification(formData: FormData): Promise<void> {
+  const user = await activeUser();
+  const id = uuid.safeParse(formData.get("id"));
+  if (!id.success) redirect("/app/notificacoes");
+  const supabase = await createClient();
+  const { data } = await supabase.from("notifications").select("*").eq("id", id.data).eq("user_id", user.id).maybeSingle();
+  if (data && !data.read_at) await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id.data).eq("user_id", user.id);
+  revalidatePath("/app", "layout");
+  const link = typeof data?.link === "string" && /^\/[A-Za-z0-9]/.test(data.link) ? data.link : "/app/notificacoes";
+  redirect(link);
+}
+
+export async function updateNotificationPreferences(_: unknown, formData: FormData): Promise<ActionResult> {
+  const user = await activeUser();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("user_preferences")
+    .update({ reminder_emails: formData.get("reminderEmails") === "on" })
+    .eq("user_id", user.id);
+  if (error) return { ok: false, error: "Não foi possível guardar as preferências de notificação." };
+  revalidatePath("/app/conta");
+  return { ok: true, message: "Preferências de notificação guardadas." };
 }
 
 export async function clearHistory(): Promise<void> {

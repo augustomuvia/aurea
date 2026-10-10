@@ -6,11 +6,10 @@ import { z } from "zod";
 import { assertSuperAdmin } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { audit } from "@/lib/audit";
-import { sendEmail } from "@/lib/email";
-import { formatDate, slugify } from "@/lib/format";
+import { kickQueue } from "@/lib/notifications/server";
+import { slugify } from "@/lib/format";
 import { checkYouTubeOEmbed, parseYouTubeUrl } from "@/lib/youtube";
 import { contentSchema, evidenceSchema, fieldErrors, planSchema, reasonSchema } from "@/lib/validation";
-import { getSettings } from "@/lib/settings";
 import type { ActionResult } from "@/lib/types";
 
 const uuid = z.string().uuid();
@@ -55,7 +54,7 @@ export async function confirmPaymentAction(_: unknown, formData: FormData): Prom
 
   const svc = createServiceClient();
   // Referência e valor lidos da BD: o formulário não pode alterar o montante.
-  const { data: payment } = await svc.from("payments").select("reference, amount_minor, user_id, plans(name)").eq("id", id.data).maybeSingle();
+  const { data: payment } = await svc.from("payments").select("reference, amount_minor").eq("id", id.data).maybeSingle();
   if (!payment) return { ok: false, error: "Pagamento não encontrado." };
 
   const { data, error } = await svc.rpc("confirm_payment", {
@@ -68,17 +67,10 @@ export async function confirmPaymentAction(_: unknown, formData: FormData): Prom
     p_provider_event_id: null,
   });
   const result = rpcResult(data, error, "Pagamento confirmado e assinatura ativada.");
-  if (result.ok && payment.user_id) {
-    const [{ data: prof }, settings] = await Promise.all([svc.from("profiles").select("email, full_name").eq("id", payment.user_id).maybeSingle(), getSettings()]);
-    const exp = (data as { expires_at?: string }).expires_at;
-    if (prof?.email && settings.email.send_payment_emails) {
-      await sendEmail(
-        prof.email,
-        "AUREA · Pagamento confirmado",
-        `Olá ${prof.full_name || ""},\n\nConfirmámos o pagamento ${payment.reference}. A sua assinatura ${(payment.plans as unknown as { name: string } | null)?.name ?? ""} está ativa${exp ? ` até ${formatDate(exp)}` : ""}.\n\nBoas escutas,\nAUREA`,
-      );
-    }
-  }
+  // Os e-mails (admin e cliente) e as notificações foram criados na mesma transação
+  // da confirmação; aqui apenas se pede o envio imediato. Uma falha de envio não
+  // afeta o pagamento nem a assinatura: o trabalho fica na fila.
+  if (result.ok) kickQueue();
   revalidatePath("/admin/pagamentos");
   revalidatePath("/admin");
   return result;

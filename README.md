@@ -96,6 +96,10 @@ Ver [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 Ver [`docs/PAGAMENTOS.md`](docs/PAGAMENTOS.md). Resumo: a app arranca em **modo provisório** (pedido pendente → cliente paga por Multicaixa Express → admin confirma com evidência verificável). A integração automática com um parceiro só deve ser ligada depois de implementar o adaptador com a especificação oficial e testar o fluxo real.
 
+## E-mails e notificações
+
+Ver [`docs/NOTIFICACOES.md`](docs/NOTIFICACOES.md). E-mails automáticos via Google Workspace (Gmail API, OAuth 2.0), fila persistente com novas tentativas, avisos de expiração a 10, 5, 3 e 1 dia (cron diário, Africa/Luanda), sino de notificações na conta e painel `/admin/notificacoes` (estado, configurações, modelos, histórico). Nada é enviado nem simulado até as credenciais estarem configuradas e um envio de teste ser validado.
+
 ## Variáveis de ambiente
 
 | Variável | Onde | Obrigatória | Descrição |
@@ -106,7 +110,7 @@ Ver [`docs/PAGAMENTOS.md`](docs/PAGAMENTOS.md). Resumo: a app arranca em **modo 
 | `SUPABASE_SERVICE_ROLE_KEY` | **só servidor** | sim | chave service role |
 | `ADMIN_REQUIRE_MFA` | servidor | recomendado | `true` (por omissão) exige TOTP no `/admin` |
 | `CRON_SECRET` | servidor | sim | protege `/api/cron/expire` (Vercel envia-o automaticamente) |
-| `RESEND_API_KEY`, `EMAIL_FROM` | servidor | não | e-mails da aplicação (confirmação de pagamento) |
+| `EMAIL_PROVIDER`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` | servidor | não | e-mails automáticos via Google Workspace (Gmail API). Ver `docs/NOTIFICACOES.md` |
 | `PAYMENT_MODE` | servidor | sim | `manual_review` até existir parceiro integrado |
 | `PAYMENT_WEBHOOK_SECRET` | servidor | só com parceiro | segredo de verificação dos callbacks |
 | `SUPER_ADMIN_EMAIL` | local | só no bootstrap | e-mail do primeiro admin |

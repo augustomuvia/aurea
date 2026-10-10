@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getSettings } from "@/lib/settings";
@@ -91,15 +92,8 @@ export default async function AdminSettings() {
           </ActionForm>
         </Card>
 
-        <Card title="E-mail" description="A chave do serviço de e-mail é configurada como variável de ambiente (RESEND_API_KEY), nunca aqui.">
-          <div className="mb-4"><Badge tone={serverEnv.resendApiKey ? "ok" : "neutral"}>{serverEnv.resendApiKey ? "Serviço configurado" : "Serviço não configurado"}</Badge></div>
-          <ActionForm action={updateSettingsAction}>
-            <input type="hidden" name="key" value="email" />
-            <Field label="Nome do remetente" name={id("email", "name")}><Input name="from_name" id={id("email", "name")} defaultValue={s.email.from_name} /></Field>
-            <Field label="E-mail de resposta" name={id("email", "from")}><Input name="from_email" id={id("email", "from")} type="email" defaultValue={s.email.from_email ?? ""} /></Field>
-            <Checkbox name="send_payment_emails" defaultChecked={s.email.send_payment_emails} label="Enviar e-mail quando um pagamento é confirmado" />
-            <SubmitButton variant="glass">Guardar</SubmitButton>
-          </ActionForm>
+        <Card title="E-mail e notificações" description="Remetente, tipos de e-mail, modelos, histórico e avisos de expiração.">
+          <Link href="/admin/notificacoes" className="text-sm text-gold-light hover:underline">Abrir Notificações →</Link>
         </Card>
 
         <Card title="Informação legal" description="Usada nos termos, na privacidade e no rodapé.">

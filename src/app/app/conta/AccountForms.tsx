@@ -1,7 +1,7 @@
 "use client";
 import { useActionState } from "react";
 import { Download } from "lucide-react";
-import { changePassword, closeAccount, updatePreferences, updateProfile } from "../actions";
+import { changePassword, closeAccount, updateNotificationPreferences, updatePreferences, updateProfile } from "../actions";
 import { Checkbox, Field, Input } from "@/components/ui/Field";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { FormMessage } from "@/components/ui/FormMessage";
@@ -27,11 +27,12 @@ export function AccountForms({
   fullName: string;
   isOwner: boolean;
   categories: { slug: string; name: string }[];
-  prefs: { preferredCategories: string[]; marketingConsent: boolean; analyticsConsent: boolean };
+  prefs: { preferredCategories: string[]; marketingConsent: boolean; analyticsConsent: boolean; reminderEmails: boolean };
 }) {
   const [profileState, profileAction] = useActionState(updateProfile, null);
   const [prefState, prefAction] = useActionState(updatePreferences, null);
   const [pwState, pwAction] = useActionState(changePassword, null);
+  const [notifState, notifAction] = useActionState(updateNotificationPreferences, null);
   const [closeState, closeAction] = useActionState(closeAccount, null);
   const pwFe = pwState && !pwState.ok ? pwState.fieldErrors : undefined;
 
@@ -67,6 +68,32 @@ export function AccountForms({
             <Checkbox name="analyticsConsent" defaultChecked={prefs.analyticsConsent} label="Aceito a utilização de estatísticas anónimas para melhorar o serviço." />
           </fieldset>
           <SubmitButton variant="glass" pendingLabel="A guardar…">Guardar preferências</SubmitButton>
+        </form>
+      </Section>
+
+      <Section
+        title="Notificações"
+        description="As mensagens necessárias à gestão da conta, dos pagamentos e da assinatura são sempre enviadas. As novidades da AUREA dependem do consentimento acima."
+      >
+        <form action={notifAction} className="space-y-5">
+          <FormMessage state={notifState} />
+          <fieldset className="space-y-3">
+            <legend className="mb-3 text-[0.8rem] font-medium text-paper/70">Sempre ativas (essenciais)</legend>
+            <ul className="space-y-1.5 text-sm text-paper/70">
+              <li>Boas-vindas e segurança da conta</li>
+              <li>Pedidos de pagamento e verificação do pagamento</li>
+              <li>Ativação do plano</li>
+            </ul>
+          </fieldset>
+          <fieldset className="space-y-3">
+            <legend className="mb-3 text-[0.8rem] font-medium text-paper/70">Opcionais</legend>
+            <Checkbox
+              name="reminderEmails"
+              defaultChecked={prefs.reminderEmails}
+              label="Receber por e-mail os avisos antes de a assinatura terminar (10, 5, 3 e 1 dia). Os avisos aparecem sempre no sino da conta."
+            />
+          </fieldset>
+          <SubmitButton variant="glass" pendingLabel="A guardar…">Guardar notificações</SubmitButton>
         </form>
       </Section>
 

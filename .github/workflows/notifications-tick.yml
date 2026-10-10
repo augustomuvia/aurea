@@ -1,0 +1,32 @@
+# Agendador frequente OPCIONAL para a fila de e-mails da AUREA.
+# O plano Hobby da Vercel só permite um cron por dia; este workflow chama
+# /api/cron/notifications a cada 15 minutos para enviar novas tentativas sem
+# esperar pelo dia seguinte. Não faz nada enquanto os segredos não existirem.
+#
+# Segredos do repositório (Settings → Secrets and variables → Actions):
+#   AUREA_SITE_URL  = https://www.aurea-som.site
+#   CRON_SECRET     = o mesmo valor configurado na Vercel
+name: Notificações AUREA (fila)
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Processar fila de e-mails
+        env:
+          SITE_URL: ${{ secrets.AUREA_SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Segredos não configurados; nada a fazer."
+            exit 0
+          fi
+          curl -fsS --max-time 90 -H "Authorization: Bearer $CRON_SECRET" "$SITE_URL/api/cron/notifications"

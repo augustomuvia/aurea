@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { kickQueue } from "@/lib/notifications/server";
 import { getProvider } from "@/lib/payments/providers";
 import { processNotification } from "@/lib/payments/webhook";
 import { serverEnv } from "@/lib/env";
@@ -41,5 +42,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ pro
     if (error) return { ok: false, error: "internal_error" };
     return data as { ok: boolean; status?: string; error?: string };
   });
+  if (result.httpStatus === 200) kickQueue();
   return NextResponse.json(result.body, { status: result.httpStatus });
 }

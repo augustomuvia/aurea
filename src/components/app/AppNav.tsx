@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Heart, History, Home, Library, LogOut, Settings, Shield, UserRound } from "lucide-react";
+import { Bell, Heart, History, Home, Library, LogOut, Settings, Shield, UserRound } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { logoutAction } from "@/app/(site)/(auth)/actions";
 import { HeaderSearch } from "./HeaderSearch";
+import { NotificationBell, type BellItem } from "./NotificationBell";
 
 const MAIN = [
   { href: "/app", label: "Início", icon: Home, exact: true },
@@ -13,7 +14,7 @@ const MAIN = [
   { href: "/app/historico", label: "Histórico", icon: History },
 ];
 
-export function AppNav({ name, isAdmin }: { name: string; isAdmin: boolean }) {
+export function AppNav({ name, isAdmin, notifications }: { name: string; isAdmin: boolean; notifications: { items: BellItem[]; unread: number } }) {
   const pathname = usePathname();
   const active = (href: string, exact?: boolean) => (exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
   return (
@@ -38,6 +39,7 @@ export function AppNav({ name, isAdmin }: { name: string; isAdmin: boolean }) {
           </ul>
           <div className="flex items-center gap-1">
             <HeaderSearch />
+            <NotificationBell items={notifications.items} unread={notifications.unread} />
             {isAdmin && (
               <Link href="/admin" className="press grid h-10 w-10 place-items-center rounded-full text-gold hover:bg-white/[0.06]" aria-label="Painel administrativo" title="Painel administrativo">
                 <Shield className="h-4.5 w-4.5" />
@@ -52,6 +54,7 @@ export function AppNav({ name, isAdmin }: { name: string; isAdmin: boolean }) {
                 {[
                   { href: "/app/assinatura", label: "Assinatura", icon: UserRound },
                   { href: "/app/pagamentos", label: "Pagamentos", icon: Library },
+                  { href: "/app/notificacoes", label: "Notificações", icon: Bell },
                   { href: "/app/conta", label: "Conta e privacidade", icon: Settings },
                 ].map((l) => (
                   <Link key={l.href} href={l.href} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-paper/80 hover:bg-white/[0.06] hover:text-paper">
