@@ -105,6 +105,58 @@ export const unconfiguredProvider: EmailProvider = {
   },
 };
 
+const GOOGLE_KEYS = ["EMAIL_PROVIDER", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN"] as const;
+
+/** Remove espaços, quebras de linha e aspas que ficam ao colar valores na Vercel. */
+export function cleanEnvValue(v: string | undefined): string | undefined {
+  if (v === undefined) return undefined;
+  const t = v.trim().replace(/^(["'])(.*)\1$/s, "$2").trim();
+  return t || undefined;
+}
+
+export function cleanGoogleEnv(env: Env = process.env): Env {
+  const out: Env = {};
+  for (const k of GOOGLE_KEYS) out[k] = cleanEnvValue(env[k]);
+  return out;
+}
+
+export interface GoogleEnvCheck {
+  key: string;
+  ok: boolean;
+  detail: string;
+}
+
+/**
+ * Diagnóstico para o painel de administração. Nunca devolve a chave secreta nem o
+ * token: só o comprimento, o formato esperado e se havia espaços a mais. O ID do
+ * cliente OAuth não é secreto (aparece nos URLs de autorização) e é mostrado
+ * por inteiro para poder ser comparado com o Google Cloud.
+ */
+export function diagnoseGoogleEnv(env: Env = process.env): GoogleEnvCheck[] {
+  const clean = cleanGoogleEnv(env);
+  const padded = (k: string) => env[k] !== undefined && env[k] !== clean[k] && clean[k] !== undefined;
+  const note = (k: string) => (padded(k) ? " (tinha espaços ou aspas a mais, já são ignorados)" : "");
+  const id = clean.GOOGLE_CLIENT_ID;
+  const secret = clean.GOOGLE_CLIENT_SECRET;
+  const token = clean.GOOGLE_REFRESH_TOKEN;
+  const idOk = !!id && /^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/.test(id);
+  return [
+    { key: "EMAIL_PROVIDER", ok: clean.EMAIL_PROVIDER === "gmail", detail: clean.EMAIL_PROVIDER ? `"${clean.EMAIL_PROVIDER}"${note("EMAIL_PROVIDER")}` : "em falta" },
+    { key: "GOOGLE_CLIENT_ID", ok: idOk, detail: id ? `${id}${idOk ? "" : " (formato inesperado)"}${note("GOOGLE_CLIENT_ID")}` : "em falta" },
+    {
+      key: "GOOGLE_CLIENT_SECRET",
+      ok: !!secret && secret.startsWith("GOCSPX-"),
+      detail: secret ? `${secret.length} caracteres, ${secret.startsWith("GOCSPX-") ? "começa por GOCSPX-" : "não começa por GOCSPX-"}, termina em …${secret.slice(-4)} (compare com a chave ativa no Google Cloud)${note("GOOGLE_CLIENT_SECRET")}` : "em falta",
+    },
+    {
+      key: "GOOGLE_REFRESH_TOKEN",
+      ok: !!token && token.startsWith("1//"),
+      detail: token ? `${token.length} caracteres, ${token.startsWith("1//") ? "começa por 1//" : "não começa por 1//"}${note("GOOGLE_REFRESH_TOKEN")}` : "em falta",
+    },
+  ];
+}
+
 export function getEmailProvider(env: Env = process.env): EmailProvider {
-  return env.EMAIL_PROVIDER === "gmail" ? gmailProvider(env) : unconfiguredProvider;
+  const clean = cleanGoogleEnv(env);
+  return clean.EMAIL_PROVIDER === "gmail" ? gmailProvider(clean) : unconfiguredProvider;
 }
