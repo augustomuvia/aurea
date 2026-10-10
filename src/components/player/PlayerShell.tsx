@@ -131,7 +131,7 @@ function VolumeControl() {
 
 export function PlayerShell() {
   const p = usePlayer();
-  const { current, mode, status, error, hostRef } = p;
+  const { current, mode, status, error, hostRef, needsTap } = p;
   const expanded = mode === "expanded" && current;
   const collapsed = mode === "collapsed" && current;
   const isFav = current ? p.favorites.has(current.contentId) : false;
@@ -195,6 +195,14 @@ export function PlayerShell() {
           <div className={expanded ? "relative" : ""}>
             <div className={`relative overflow-hidden bg-black transition-[height] duration-500 ${videoClass}`}>
               <div ref={hostRef} className="absolute inset-0 [&>iframe]:h-full [&>iframe]:w-full" />
+              {current && needsTap && status !== "playing" && status !== "error" && !collapsed && (
+                <p
+                  role="status"
+                  className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-ink/90 to-transparent px-4 pb-6 pt-3 text-center text-xs text-paper/90"
+                >
+                  Toque no vídeo para iniciar a reprodução.
+                </p>
+              )}
               {current && status === "error" && (
                 <div className="absolute inset-0 grid place-items-center bg-ink/90 p-6 text-center" role="alert">
                   <div>

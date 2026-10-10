@@ -15,6 +15,8 @@ interface PlayerContextValue {
   current: PlayableTrack | null;
   status: PlayerStatus;
   error: string | null;
+  /** O browser bloqueou o início automático: é preciso tocar no próprio vídeo (Safari/iOS). */
+  needsTap: boolean;
   mode: PlayerMode;
   currentTime: number;
   duration: number;
@@ -52,6 +54,10 @@ export function useOptionalPlayer() {
 }
 
 const SAVE_EVERY_MS = 20_000;
+/** Tempo máximo para o leitor do YouTube ficar pronto antes de mostrar erro. */
+const READY_TIMEOUT_MS = 15_000;
+/** Sem reprodução ao fim deste tempo, assume-se que o browser bloqueou o início automático. */
+const START_WATCHDOG_MS = 4_000;
 
 export function PlayerProvider({ children, initialFavorites }: { children: ReactNode; initialFavorites: string[] }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -65,6 +71,8 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
   const [index, setIndex] = useState(0);
   const [status, setStatus] = useState<PlayerStatus>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [needsTap, setNeedsTap] = useState(false);
+  const startWatchRef = useRef<number | null>(null);
   const [mode, setMode] = useState<PlayerMode>("mini");
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -90,6 +98,26 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
     void recordPlayback({ contentId: t.contentId, position: pos, duration: dur, newPlay: isNewPlay }).catch(() => undefined);
   }, []);
 
+  const clearStartWatch = useCallback(() => {
+    if (startWatchRef.current !== null) window.clearTimeout(startWatchRef.current);
+    startWatchRef.current = null;
+  }, []);
+
+  /**
+   * O Safari (e o iOS) só deixa o vídeo de um iframe começar com som depois de
+   * um toque dentro do próprio iframe. Se a reprodução não arrancar, deixa de
+   * mostrar "a carregar" e pede ao utilizador para tocar no vídeo.
+   */
+  const watchStart = useCallback(() => {
+    clearStartWatch();
+    setNeedsTap(false);
+    startWatchRef.current = window.setTimeout(() => {
+      startWatchRef.current = null;
+      setStatus((s) => (s === "loading" ? "paused" : s));
+      setNeedsTap(true);
+    }, START_WATCHDOG_MS);
+  }, [clearStartWatch]);
+
   const advance = useCallback((delta: number) => {
     const q = queueRef.current;
     const i = indexRef.current + delta;
@@ -100,32 +128,49 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
     newPlayRef.current = true;
     setStatus("loading");
     playerRef.current?.loadVideoById({ videoId: q[i].videoId, startSeconds: 0 });
+    watchStart();
     return true;
-  }, []);
+  }, [watchStart]);
 
   /** Cria o player apenas uma vez; as mudanças de faixa usam loadVideoById. */
-  const ensurePlayer = useCallback((): Promise<YTPlayer> => {
+  const ensurePlayer = useCallback((initial?: { videoId: string; start: number }): Promise<YTPlayer> => {
     if (playerRef.current) return Promise.resolve(playerRef.current);
     if (readyRef.current) return readyRef.current;
     readyRef.current = loadYouTubeApi().then(
       (YT) =>
-        new Promise<YTPlayer>((resolve) => {
+        new Promise<YTPlayer>((resolve, reject) => {
+          const timer = window.setTimeout(() => reject(new Error("timeout")), READY_TIMEOUT_MS);
           const mount = document.createElement("div");
           hostRef.current?.replaceChildren(mount);
+          // O leitor é criado já com o vídeo escolhido (um leitor vazio fica preto
+          // no Safari) e com os controlos do YouTube, para que tocar no vídeo
+          // funcione sempre como gesto do utilizador dentro do iframe.
           new YT.Player(mount, {
-            host: "https://www.youtube-nocookie.com",
             width: "100%",
             height: "100%",
-            playerVars: { playsinline: 1, rel: 0, controls: 0, iv_load_policy: 3, origin: window.location.origin, enablejsapi: 1 },
+            videoId: initial?.videoId,
+            playerVars: {
+              playsinline: 1,
+              rel: 0,
+              controls: 1,
+              iv_load_policy: 3,
+              origin: window.location.origin,
+              enablejsapi: 1,
+              ...(initial ? { autoplay: 1, start: initial.start } : {}),
+            },
             events: {
               onReady: (e) => {
+                window.clearTimeout(timer);
                 playerRef.current = e.target;
                 e.target.setVolume(volume);
+                if (initial) e.target.playVideo();
                 resolve(e.target);
               },
               onStateChange: (e) => {
                 switch (e.data) {
                   case YT_STATE.PLAYING:
+                    clearStartWatch();
+                    setNeedsTap(false);
                     setStatus("playing");
                     setError(null);
                     setDuration(e.target.getDuration() || 0);
@@ -151,6 +196,7 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
                 }
               },
               onError: (e) => {
+                clearStartWatch();
                 setStatus("error");
                 setError(describePlayerError(e.data));
                 const t = currentRef.current;
@@ -169,13 +215,13 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
     });
     return readyRef.current;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [advance, persist]);
+  }, [advance, persist, clearStartWatch]);
 
-  // Prepara o leitor vazio (sem vídeo) quando a área /app é aberta, para que o
-  // primeiro clique em "Reproduzir" inicie o som de forma síncrona (iOS/Safari).
+  // Carrega o script da API mais cedo; o leitor só é criado no primeiro "Reproduzir".
   useEffect(() => {
-    void ensurePlayer().catch(() => undefined);
-  }, [ensurePlayer]);
+    void loadYouTubeApi().catch(() => undefined);
+    return () => clearStartWatch();
+  }, [clearStartWatch]);
 
   // Progresso e gravação periódica da posição.
   useEffect(() => {
@@ -221,10 +267,11 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
       if (p) {
         p.loadVideoById({ videoId: t.videoId, startSeconds: Math.floor(resumeAt) });
       } else {
-        void ensurePlayer().then((pl) => pl.loadVideoById({ videoId: t.videoId, startSeconds: Math.floor(resumeAt) }));
+        void ensurePlayer({ videoId: t.videoId, start: Math.floor(resumeAt) }).catch(() => undefined);
       }
+      watchStart();
     },
-    [ensurePlayer, mode],
+    [ensurePlayer, mode, watchStart],
   );
 
   const pause = useCallback(() => playerRef.current?.pauseVideo(), []);
@@ -299,13 +346,15 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
 
   const close = useCallback(() => {
     persist();
+    clearStartWatch();
+    setNeedsTap(false);
     playerRef.current?.stopVideo();
     setQueue([]);
     setIndex(0);
     setStatus("idle");
     setMode("mini");
     setError(null);
-  }, [persist]);
+  }, [persist, clearStartWatch]);
 
   const value = useMemo<PlayerContextValue>(
     () => ({
@@ -314,6 +363,7 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
       current,
       status,
       error,
+      needsTap,
       mode,
       currentTime,
       duration,
@@ -339,7 +389,7 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
       close,
       hostRef,
     }),
-    [queue, index, current, status, error, mode, currentTime, duration, volume, muted, favorites, playQueue, toggle, pause, advance, seek, skip, setVolume, toggleMute, changeMode, toggleFav, close],
+    [queue, index, current, status, error, needsTap, mode, currentTime, duration, volume, muted, favorites, playQueue, toggle, pause, advance, seek, skip, setVolume, toggleMute, changeMode, toggleFav, close],
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;

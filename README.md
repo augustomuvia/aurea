@@ -10,7 +10,7 @@ Plataforma premium de experiências sonoras (relaxamento, meditação, concentra
 |---|---|---|
 | Web | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS 4 | `src/app` |
 | Dados e autenticação | Supabase (PostgreSQL + RLS, Auth com MFA TOTP) | `supabase/migrations` |
-| Reprodução | YouTube IFrame Player API (modo `youtube-nocookie`) | `src/components/player` |
+| Reprodução | YouTube IFrame Player API (leitor oficial, com os controlos do YouTube) | `src/components/player` |
 | Pagamentos | Multicaixa Express: modo provisório de verificação manual + interface para parceiro | `src/lib/payments`, funções SQL |
 | E-mail | Resend (opcional) para e-mails da app; Supabase SMTP para e-mails de autenticação | `src/lib/email.ts` |
 | Hosting | Vercel (+ Vercel Cron para expirações) | `vercel.json` |
