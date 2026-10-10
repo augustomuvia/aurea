@@ -289,7 +289,7 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
                 }
                 const want = currentRef.current;
                 // Fechado, ou a faixa atual passou a tocar pelo áudio próprio.
-                if (!want || usingAudioRef.current) {
+                if (!want || !want.videoId || usingAudioRef.current) {
                   e.target.stopVideo();
                   resolve(e.target);
                   return;
@@ -381,9 +381,16 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
       }
       selectAudio(false);
       if (audioRef.current?.getAttribute("src")) audioEngine.stopVideo();
+      if (!t.videoId) {
+        // Conteúdo só com áudio próprio cujo ficheiro falhou: não há alternativa.
+        setStatus("error");
+        setError(AUDIO_ERROR);
+        return;
+      }
+      const videoId = t.videoId;
       const p = playerRef.current;
-      if (p) p.loadVideoById({ videoId: t.videoId, startSeconds: start });
-      else void ensurePlayer({ videoId: t.videoId, start }).catch(() => undefined);
+      if (p) p.loadVideoById({ videoId, startSeconds: start });
+      else void ensurePlayer({ videoId, start }).catch(() => undefined);
       watchStart();
     },
     [audioEngine, clearStartWatch, ensurePlayer, getAudio, selectAudio, watchStart],

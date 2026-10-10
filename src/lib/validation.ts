@@ -53,7 +53,8 @@ export const contentSchema = z.object({
   title: z.string().trim().min(2, "Indique o título.").max(140),
   slug: z.string().trim().regex(/^[a-z0-9-]{2,90}$/, "Use apenas letras minúsculas, números e hífenes.").optional().or(z.literal("")),
   description: z.string().trim().max(2000).default(""),
-  youtubeUrl: z.string().trim().min(1, "Indique o URL do YouTube."),
+  // Vazio só é aceite em conteúdos que já têm áudio próprio (verificado na ação).
+  youtubeUrl: z.string().trim().max(500).default(""),
   declaredFrequencyHz: optionalNumber,
   durationSeconds: optionalInt,
   coverUrl: z.string().trim().url("URL inválido.").startsWith("https://", "Use um URL https.").optional().or(z.literal("")),

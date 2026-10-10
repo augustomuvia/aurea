@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, AlertTriangle } from "lucide-react";
+import { Plus, AlertTriangle, Music } from "lucide-react";
 import { requireSuperAdmin } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { FilterBar, Table, td } from "@/components/admin/Table";
@@ -8,6 +8,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { inputClass } from "@/components/ui/Field";
 import { CONTENT_STATUS_LABEL, formatDate } from "@/lib/format";
 import { youtubeThumbnail } from "@/lib/youtube";
+import { themedCover } from "@/lib/audio";
 import { recheckEmbedAction, setContentStatusAction } from "../actions";
 
 export const metadata = { title: "Conteúdos" };
@@ -39,7 +40,12 @@ export default async function AdminContent({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageHeader eyebrow="Catálogo" title="Conteúdos" action={<ButtonLink href="/admin/conteudos/novo" size="sm"><Plus className="h-4 w-4" /> Adicionar</ButtonLink>} />
+      <PageHeader eyebrow="Catálogo" title="Conteúdos" action={
+          <div className="flex flex-wrap gap-2">
+            <ButtonLink href="/admin/conteudos/audios" size="sm" variant="glass"><Music className="h-4 w-4" /> Enviar áudios</ButtonLink>
+            <ButtonLink href="/admin/conteudos/novo" size="sm"><Plus className="h-4 w-4" /> Adicionar</ButtonLink>
+          </div>
+        } />
       <FilterBar action="/admin/conteudos">
         <label className="text-xs text-mute">Título<input name="q" defaultValue={q} className={`${inputClass} mt-1 h-11 w-56`} /></label>
         <label className="text-xs text-mute">
@@ -56,14 +62,16 @@ export default async function AdminContent({ searchParams }: { searchParams: Pro
           <tr key={c.id} className="hover:bg-white/[0.02]">
             <td className={td}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={c.cover_url || youtubeThumbnail(c.youtube_video_id)} alt="" className="h-10 w-10 rounded-lg object-cover" loading="lazy" />
+              <img src={c.cover_url || (c.youtube_video_id ? youtubeThumbnail(c.youtube_video_id) : themedCover(c.title))} alt="" className="h-10 w-10 rounded-lg object-cover" loading="lazy" />
             </td>
             <td className={td}><Link href={`/admin/conteudos/${c.id}`} className="font-medium text-paper hover:text-gold-light">{c.title}</Link></td>
             <td className={td}><Badge tone={c.status === "published" ? "ok" : c.status === "removed" ? "danger" : "neutral"}>{CONTENT_STATUS_LABEL[c.status]}</Badge></td>
             <td className={td}>{c.is_premium ? <Badge tone="gold">Premium</Badge> : <Badge>Aberto</Badge>}</td>
             <td className={`${td} text-mute`}>{c.is_featured ? `#${c.featured_order}` : "—"}</td>
             <td className={td}>
-              {c.embed_error ? (
+              {!c.youtube_video_id ? (
+                <span className="text-xs text-gold-light">Só áudio próprio</span>
+              ) : c.embed_error ? (
                 <span className="inline-flex items-center gap-1.5 text-xs text-danger"><AlertTriangle className="h-3.5 w-3.5" /> {EMBED_LABEL[c.embed_error] ?? c.embed_error}</span>
               ) : (
                 <span className="text-xs text-mute">OK</span>
@@ -71,10 +79,12 @@ export default async function AdminContent({ searchParams }: { searchParams: Pro
             </td>
             <td className={`${td} text-mute`}>{formatDate(c.updated_at)}</td>
             <td className={`${td} whitespace-nowrap text-right`}>
-              <form action={recheckEmbedAction} className="inline">
-                <input type="hidden" name="id" value={c.id} />
-                <button className="text-xs text-mute hover:text-paper">Verificar</button>
-              </form>
+              {c.youtube_video_id && (
+                <form action={recheckEmbedAction} className="inline">
+                  <input type="hidden" name="id" value={c.id} />
+                  <button className="text-xs text-mute hover:text-paper">Verificar</button>
+                </form>
+              )}
               <form action={setContentStatusAction} className="ml-3 inline">
                 <input type="hidden" name="id" value={c.id} />
                 <input type="hidden" name="status" value={c.status === "published" ? "unpublished" : "published"} />

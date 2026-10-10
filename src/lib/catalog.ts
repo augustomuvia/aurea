@@ -1,17 +1,17 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { youtubeThumbnail } from "@/lib/youtube";
-import { audioSrc } from "@/lib/audio";
+import { audioSrc, themedCover } from "@/lib/audio";
 import type { Category, ContentItem, PlayableTrack } from "@/lib/types";
 
 export type CatalogItem = ContentItem & {
-  content_media: { youtube_video_id: string; audio_path?: string | null } | null;
+  content_media: { youtube_video_id: string | null; audio_path?: string | null } | null;
 };
 
 export const CONTENT_SELECT = "*, content_categories(categories(slug, name)), content_media(youtube_video_id, audio_path)";
 
-export function coverOf(item: Pick<ContentItem, "cover_url" | "youtube_video_id">) {
-  return item.cover_url || youtubeThumbnail(item.youtube_video_id);
+export function coverOf(item: Pick<ContentItem, "cover_url" | "youtube_video_id" | "title">) {
+  return item.cover_url || (item.youtube_video_id ? youtubeThumbnail(item.youtube_video_id) : themedCover(item.title));
 }
 
 export function primaryCategory(item: CatalogItem): string | null {

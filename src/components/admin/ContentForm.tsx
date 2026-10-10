@@ -6,6 +6,7 @@ import { SubmitButton } from "@/components/ui/SubmitButton";
 import { FormMessage } from "@/components/ui/FormMessage";
 import { parseYouTubeUrl, youtubeThumbnail } from "@/lib/youtube";
 import { USE_LABEL } from "@/lib/format";
+import { DEFAULT_COVER } from "@/lib/audio";
 
 export interface ContentFormValues {
   id?: string;
@@ -37,8 +38,8 @@ export function ContentForm({ values, categories }: { values: ContentFormValues;
       {values.id && <input type="hidden" name="id" value={values.id} />}
       <div className="glass space-y-5 p-6">
         <FormMessage state={state} />
-        <Field label="URL do YouTube" name="youtubeUrl" error={fe?.youtubeUrl} hint={url && !preview.ok ? preview.error : "Formatos aceites: youtube.com/watch, youtu.be, /embed, /shorts, /live."}>
-          <Input name="youtubeUrl" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=…" required error={fe?.youtubeUrl} />
+        <Field label="URL do YouTube" name="youtubeUrl" error={fe?.youtubeUrl} hint={url && !preview.ok ? preview.error : "Formatos aceites: youtube.com/watch, youtu.be, /embed, /shorts, /live. Pode ficar vazio em conteúdos com áudio próprio."}>
+          <Input name="youtubeUrl" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=…" error={fe?.youtubeUrl} />
         </Field>
         <Field label="Título" name="title" error={fe?.title}>
           <Input name="title" defaultValue={values.title} maxLength={140} required error={fe?.title} />
@@ -67,9 +68,9 @@ export function ContentForm({ values, categories }: { values: ContentFormValues;
 
       <div className="space-y-5">
         <div className="glass overflow-hidden">
-          {preview.ok ? (
+          {preview.ok || values.coverUrl || !url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={values.coverUrl || youtubeThumbnail(preview.videoId)} alt="Pré-visualização da capa" className="aspect-video w-full object-cover" />
+            <img src={values.coverUrl || (preview.ok ? youtubeThumbnail(preview.videoId) : DEFAULT_COVER)} alt="Pré-visualização da capa" className="aspect-video w-full object-cover" />
           ) : (
             <div className="grid aspect-video place-items-center text-sm text-mute">Pré-visualização</div>
           )}
