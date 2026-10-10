@@ -206,3 +206,15 @@ export function renderVerificationEmail(code: string, fromAddress: string, opts:
   const r = renderEmail("admin_payment_confirmed", content, { link_admin: `${opts.siteUrl}/admin/notificacoes` }, { ...opts, test: false });
   return r;
 }
+
+/** Confirmação de conta enviada pela AUREA (não editável). O link é de uso único. */
+export function renderAccountConfirmEmail(name: string, link: string, opts: RenderOptions): RenderedEmail {
+  const hello = name.trim() ? `Olá, ${name.trim().split(/\s+/)[0]}.` : "Olá.";
+  const content: TemplateContent = {
+    subject: "AUREA · confirme o seu e-mail",
+    heading: "Confirme o seu e-mail",
+    body: `${hello}\n\nFalta só um passo para entrar na AUREA. Toque no botão abaixo para confirmar o seu e-mail.\n\nSe não criou uma conta na AUREA, ignore esta mensagem.`,
+    cta_label: "Confirmar e-mail",
+  };
+  return renderEmail("admin_payment_confirmed", content, { link_admin: link }, { ...opts, test: false });
+}
