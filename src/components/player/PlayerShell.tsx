@@ -208,11 +208,16 @@ export function PlayerShell() {
                   <div>
                     <AlertCircle className="mx-auto mb-3 h-6 w-6 text-danger" />
                     <p className="text-sm text-paper/85">{error}</p>
-                    {p.index < p.queue.length - 1 && (
-                      <button onClick={p.next} className="press mt-4 text-sm text-gold-light underline underline-offset-4">
-                        Passar ao seguinte
+                    <div className="mt-4 flex items-center justify-center gap-5">
+                      <button onClick={p.retry} className="press text-sm text-gold-light underline underline-offset-4">
+                        Tentar novamente
                       </button>
-                    )}
+                      {p.index < p.queue.length - 1 && (
+                        <button onClick={p.next} className="press text-sm text-paper/70 underline underline-offset-4">
+                          Passar ao seguinte
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

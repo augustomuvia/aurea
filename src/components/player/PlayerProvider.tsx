@@ -36,6 +36,8 @@ interface PlayerContextValue {
   jumpTo: (i: number) => void;
   toggleFav: (contentId: string) => Promise<void>;
   close: () => void;
+  /** Volta a criar o leitor do YouTube e tenta tocar a faixa atual. */
+  retry: () => void;
   /** Elemento onde o iframe do YouTube vive (montado uma única vez). */
   hostRef: React.RefObject<HTMLDivElement | null>;
 }
@@ -54,8 +56,14 @@ export function useOptionalPlayer() {
 }
 
 const SAVE_EVERY_MS = 20_000;
-/** Tempo máximo para o leitor do YouTube ficar pronto antes de mostrar erro. */
-const READY_TIMEOUT_MS = 15_000;
+/**
+ * Tempo até avisar que o leitor do YouTube está lento. Não é fatal: em redes móveis
+ * lentas o leitor pode ficar pronto depois disso e a reprodução continua.
+ */
+const READY_TIMEOUT_MS = 20_000;
+// Os códigos (L1/L2) ajudam a saber, por uma captura de ecrã, em que passo falhou.
+const LOAD_ERROR = "O leitor está a demorar a carregar. Verifique a ligação ou toque em Tentar novamente. (L2)";
+const SCRIPT_ERROR = "Não foi possível carregar o leitor. Verifique a ligação e tente novamente. (L1)";
 /** Sem reprodução ao fim deste tempo, assume-se que o browser bloqueou o início automático. */
 const START_WATCHDOG_MS = 4_000;
 
@@ -63,6 +71,9 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
   const hostRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const readyRef = useRef<Promise<YTPlayer> | null>(null);
+  /** Cada criação do leitor tem um número; eventos de leitores antigos são ignorados. */
+  const genRef = useRef(0);
+  const ensurePlayerRef = useRef<((initial?: { videoId: string; start: number }) => Promise<YTPlayer>) | null>(null);
   const pendingStartRef = useRef<number>(0);
   const lastSaveRef = useRef<number>(0);
   const newPlayRef = useRef<boolean>(false);
@@ -127,7 +138,9 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
     pendingStartRef.current = 0;
     newPlayRef.current = true;
     setStatus("loading");
-    playerRef.current?.loadVideoById({ videoId: q[i].videoId, startSeconds: 0 });
+    const p = playerRef.current;
+    if (p) p.loadVideoById({ videoId: q[i].videoId, startSeconds: 0 });
+    else void ensurePlayerRef.current?.({ videoId: q[i].videoId, start: 0 }).catch(() => undefined);
     watchStart();
     return true;
   }, [watchStart]);
@@ -136,10 +149,16 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
   const ensurePlayer = useCallback((initial?: { videoId: string; start: number }): Promise<YTPlayer> => {
     if (playerRef.current) return Promise.resolve(playerRef.current);
     if (readyRef.current) return readyRef.current;
-    readyRef.current = loadYouTubeApi().then(
+    const gen = ++genRef.current;
+    const stale = () => gen !== genRef.current;
+    let timedOut = false;
+    const ready = loadYouTubeApi().then(
       (YT) =>
         new Promise<YTPlayer>((resolve, reject) => {
-          const timer = window.setTimeout(() => reject(new Error("timeout")), READY_TIMEOUT_MS);
+          const timer = window.setTimeout(() => {
+            timedOut = true;
+            reject(new Error("timeout"));
+          }, READY_TIMEOUT_MS);
           const mount = document.createElement("div");
           hostRef.current?.replaceChildren(mount);
           // O leitor é criado já com o vídeo escolhido (um leitor vazio fica preto
@@ -161,12 +180,30 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
             events: {
               onReady: (e) => {
                 window.clearTimeout(timer);
+                if (stale()) return;
                 playerRef.current = e.target;
-                e.target.setVolume(volume);
-                if (initial) e.target.playVideo();
+                readyRef.current = null;
+                try {
+                  e.target.setVolume(volume);
+                } catch {
+                  // iOS não deixa controlar o volume por JavaScript.
+                }
+                if (timedOut && currentRef.current) {
+                  // Ficou pronto depois do aviso de lentidão: tira o aviso e
+                  // pede um toque no vídeo (o gesto original já expirou).
+                  setError(null);
+                  setStatus("paused");
+                  setNeedsTap(true);
+                }
+                // Se a faixa mudou enquanto o leitor carregava, toca a atual.
+                const want = currentRef.current;
+                if (!want) e.target.stopVideo();
+                else if (want.videoId !== initial?.videoId) e.target.loadVideoById({ videoId: want.videoId, startSeconds: 0 });
+                else if (initial) e.target.playVideo();
                 resolve(e.target);
               },
               onStateChange: (e) => {
+                if (stale()) return;
                 switch (e.data) {
                   case YT_STATE.PLAYING:
                     clearStartWatch();
@@ -196,6 +233,7 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
                 }
               },
               onError: (e) => {
+                if (stale()) return;
                 clearStartWatch();
                 setStatus("error");
                 setError(describePlayerError(e.data));
@@ -206,16 +244,42 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
           });
         }),
     );
-    readyRef.current.catch(() => {
+    readyRef.current = ready;
+    ready.catch((err: unknown) => {
+      if (stale()) return;
+      // Com tempo esgotado o leitor continua a carregar: se ficar pronto, o
+      // onReady acima tira o aviso. "Tentar novamente" cria um leitor novo.
       readyRef.current = null;
       if (currentRef.current) {
+        clearStartWatch();
         setStatus("error");
-        setError("Não foi possível carregar o leitor. Verifique a ligação e tente novamente.");
+        setError(timedOut ? LOAD_ERROR : SCRIPT_ERROR);
       }
     });
-    return readyRef.current;
+    return ready;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [advance, persist, clearStartWatch]);
+  ensurePlayerRef.current = ensurePlayer;
+
+  /** Descarta o leitor atual (ou o que não chegou a ficar pronto) e cria outro com a faixa atual. */
+  const retry = useCallback(() => {
+    const t = currentRef.current;
+    if (!t) return;
+    genRef.current += 1;
+    try {
+      playerRef.current?.destroy();
+    } catch {
+      // leitor já removido
+    }
+    playerRef.current = null;
+    readyRef.current = null;
+    setError(null);
+    setStatus("loading");
+    newPlayRef.current = true;
+    const start = Math.floor(pendingStartRef.current);
+    void ensurePlayer({ videoId: t.videoId, start }).catch(() => undefined);
+    watchStart();
+  }, [ensurePlayer, watchStart]);
 
   // Carrega o script da API mais cedo; o leitor só é criado no primeiro "Reproduzir".
   useEffect(() => {
@@ -277,13 +341,17 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
   const pause = useCallback(() => playerRef.current?.pauseVideo(), []);
   const toggle = useCallback(() => {
     const p = playerRef.current;
-    if (!p || !currentRef.current) return;
+    if (!currentRef.current) return;
+    if (!p) {
+      if (!readyRef.current) retry();
+      return;
+    }
     if (status === "playing" || status === "loading") p.pauseVideo();
     else if (status === "ended") {
       p.seekTo(0, true);
       p.playVideo();
     } else p.playVideo();
-  }, [status]);
+  }, [status, retry]);
 
   const seek = useCallback((s: number) => {
     const p = playerRef.current;
@@ -387,9 +455,10 @@ export function PlayerProvider({ children, initialFavorites }: { children: React
       jumpTo: (i: number) => void advance(i - indexRef.current),
       toggleFav,
       close,
+      retry,
       hostRef,
     }),
-    [queue, index, current, status, error, needsTap, mode, currentTime, duration, volume, muted, favorites, playQueue, toggle, pause, advance, seek, skip, setVolume, toggleMute, changeMode, toggleFav, close],
+    [queue, index, current, status, error, needsTap, mode, currentTime, duration, volume, muted, favorites, playQueue, toggle, pause, advance, seek, skip, setVolume, toggleMute, changeMode, toggleFav, close, retry],
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
