@@ -183,3 +183,14 @@ input[type="range"].aurea-range::-moz-range-thumb {
 .prose-aurea p, .prose-aurea li { color: rgb(245 243 238 / 0.72); line-height: 1.75; }
 .prose-aurea ul { list-style: disc; padding-left: 1.25rem; margin: 0.6rem 0; }
 .prose-aurea a { color: var(--color-gold-light); text-decoration: underline; text-underline-offset: 3px; }
+
+/* Página do e-book: entradas ao fazer scroll (ver components/ebook/Reveal) */
+.ebook-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.8s var(--ease-fluid), transform 0.8s var(--ease-fluid);
+}
+.ebook-reveal[data-shown] { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .ebook-reveal { opacity: 1; transform: none; }
+}

@@ -16,7 +16,7 @@
 Se a base de dados foi criada pela integração **Integrations → Supabase** da Vercel:
 - Ligue a base de dados ao projeto `aurea` (Connect Project). As chaves do Supabase são criadas automaticamente; a app aceita tanto `NEXT_PUBLIC_SUPABASE_ANON_KEY`/`SUPABASE_SERVICE_ROLE_KEY` como os nomes novos `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`/`SUPABASE_SECRET_KEY`.
 - Sem `NEXT_PUBLIC_SITE_URL`, a app usa o domínio de produção da Vercel (`VERCEL_PROJECT_PRODUCTION_URL`). Defina-a quando tiver o domínio final.
-- Aplique as migrações e o seed no **SQL Editor** do Supabase: cole e execute, por esta ordem, `supabase/migrations/20261010000000_init.sql`, `supabase/migrations/20261010000100_admin_sessions.sql`, `supabase/migrations/20261010000200_payment_proofs.sql` e `supabase/seed.sql`. Migrações novas aplicam-se da mesma forma, uma vez, pela ordem do nome.
+- Aplique as migrações e o seed no **SQL Editor** do Supabase: cole e execute, por esta ordem, `supabase/migrations/20261010000000_init.sql`, `supabase/migrations/20261010000100_admin_sessions.sql`, `supabase/migrations/20261010000200_payment_proofs.sql`, `supabase/migrations/20261010000300_ebook.sql` e `supabase/seed.sql`. Migrações novas aplicam-se da mesma forma, uma vez, pela ordem do nome.
 - Se a Vercel indicar que não existe deployment de produção, abra **Deployments → Create Deployment** com o ramo `main` (ou faça push para `main`).
 
 ## 3. Domínio

@@ -14,7 +14,12 @@ const nextConfig: NextConfig = {
   // Comprovativos de pagamento até 4 MB (o limite real é validado na ação).
   experimental: { serverActions: { bodySizeLimit: "5mb" } },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Página do e-book: fora dos motores de pesquisa.
+      { source: "/ebook", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }] },
+      { source: "/ebook/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }] },
+    ];
   },
 };
 
