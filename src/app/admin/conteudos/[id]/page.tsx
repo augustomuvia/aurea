@@ -4,6 +4,7 @@ import { requireSuperAdmin } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/ui/Glass";
 import { ContentForm } from "@/components/admin/ContentForm";
+import { AudioUploader } from "@/components/admin/AudioUploader";
 import { FormMessage } from "@/components/ui/FormMessage";
 
 export const metadata = { title: "Editar conteúdo" };
@@ -16,7 +17,7 @@ export default async function EditContent({ params, searchParams }: { params: Pr
   const svc = createServiceClient();
   const [{ data: c }, { data: media }, { data: links }, { data: categories }] = await Promise.all([
     svc.from("content_items").select("*").eq("id", id).maybeSingle(),
-    svc.from("content_media").select("youtube_url").eq("content_id", id).maybeSingle(),
+    svc.from("content_media").select("youtube_url, audio_path").eq("content_id", id).maybeSingle(),
     svc.from("content_categories").select("category_id").eq("content_id", id),
     svc.from("categories").select("id, name").order("sort_order"),
   ]);
@@ -47,6 +48,7 @@ export default async function EditContent({ params, searchParams }: { params: Pr
           status: c.status,
         }}
       />
+      <AudioUploader contentId={c.id} current={media?.audio_path ?? null} />
     </>
   );
 }

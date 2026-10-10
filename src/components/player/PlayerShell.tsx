@@ -194,8 +194,18 @@ export function PlayerShell() {
           {/* O iframe do YouTube fica sempre neste nó: nunca é desmontado durante a navegação. */}
           <div className={expanded ? "relative" : ""}>
             <div className={`relative overflow-hidden bg-black transition-[height] duration-500 ${videoClass}`}>
-              <div ref={hostRef} className="absolute inset-0 [&>iframe]:h-full [&>iframe]:w-full" />
-              {current && needsTap && status !== "playing" && status !== "error" && !collapsed && (
+              <div ref={hostRef} className={`absolute inset-0 [&>iframe]:h-full [&>iframe]:w-full ${p.usingAudio ? "invisible" : ""}`} />
+              {current && p.usingAudio && (
+                // Áudio próprio: mostra a capa; o som continua com o ecrã bloqueado.
+                <div className="absolute inset-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={current.coverUrl} alt="" className="h-full w-full object-cover opacity-80" />
+                  <p className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/90 to-transparent px-4 pb-3 pt-8 text-center text-xs text-paper/85">
+                    Áudio AUREA · continua a tocar com o ecrã bloqueado
+                  </p>
+                </div>
+              )}
+              {current && needsTap && !p.usingAudio && status !== "playing" && status !== "error" && !collapsed && (
                 <p
                   role="status"
                   className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-ink/90 to-transparent px-4 pb-6 pt-3 text-center text-xs text-paper/90"
@@ -224,7 +234,9 @@ export function PlayerShell() {
             </div>
             {expanded && (
               <p className="mt-3 text-[0.72rem] leading-relaxed text-mute">
-                Reprodução através do leitor oficial do YouTube. Publicidade, marcas e avisos do YouTube podem ser apresentados.
+                {p.usingAudio
+                  ? "Áudio AUREA: pode bloquear o ecrã ou mudar de app, o som continua e os controlos aparecem no ecrã de bloqueio."
+                  : "Reprodução através do leitor oficial do YouTube. Publicidade, marcas e avisos do YouTube podem ser apresentados."}
               </p>
             )}
           </div>

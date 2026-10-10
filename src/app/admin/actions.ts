@@ -13,6 +13,7 @@ import { contentSchema, evidenceSchema, fieldErrors, planSchema, reasonSchema } 
 import type { ActionResult } from "@/lib/types";
 import { checkCheckoutUrl } from "@/lib/ebook/config";
 import { serverEnv } from "@/lib/env";
+import { CONTENT_AUDIO_BUCKET, CONTENT_AUDIO_MAX_BYTES, CONTENT_AUDIO_TYPES } from "@/lib/audio";
 
 const uuid = z.string().uuid();
 
@@ -443,4 +444,51 @@ export async function setSupportStatusAction(formData: FormData) {
   await createServiceClient().from("support_requests").update({ status }).eq("id", id);
   await audit(admin.id, "support.set_status", "support_request", id, null, { status });
   revalidatePath("/admin/configuracoes");
+}
+
+// ------------------------------------------------------------------ Áudio próprio
+
+const audioUploadSchema = z.object({
+  contentId: uuid,
+  fileName: z.string().min(1).max(200),
+  type: z.enum(CONTENT_AUDIO_TYPES),
+  size: z.number().int().positive().max(CONTENT_AUDIO_MAX_BYTES),
+});
+
+/** Passo 1: URL assinado para o browser enviar o ficheiro diretamente para o Storage. */
+export async function createAudioUploadAction(input: z.input<typeof audioUploadSchema>): Promise<ActionResult<{ path: string; token: string }>> {
+  await assertSuperAdmin();
+  const parsed = audioUploadSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Use um ficheiro MP3 ou M4A até 50 MB." };
+  const { contentId, fileName } = parsed.data;
+  const ext = /\.m4a$/i.test(fileName) ? "m4a" : /\.aac$/i.test(fileName) ? "aac" : "mp3";
+  const path = `${contentId}/${Date.now()}.${ext}`;
+  const { data, error } = await createServiceClient().storage.from(CONTENT_AUDIO_BUCKET).createSignedUploadUrl(path);
+  if (error || !data) return { ok: false, error: "Não foi possível preparar o envio. Confirme que a migração do áudio foi aplicada." };
+  return { ok: true, data: { path: data.path, token: data.token } };
+}
+
+/** Passo 2 (ou remoção com path = null): associa o ficheiro ao conteúdo e apaga o anterior. */
+export async function setContentAudioAction(input: { contentId: string; path: string | null }): Promise<ActionResult> {
+  const admin = await assertSuperAdmin();
+  const contentId = uuid.safeParse(input.contentId);
+  if (!contentId.success) return { ok: false, error: "Conteúdo inválido." };
+  const path = input.path;
+  if (path !== null && !new RegExp(`^${contentId.data}/[A-Za-z0-9._-]{1,100}$`).test(path)) return { ok: false, error: "Ficheiro inválido." };
+  const svc = createServiceClient();
+  const bucket = svc.storage.from(CONTENT_AUDIO_BUCKET);
+  if (path) {
+    const name = path.slice(contentId.data.length + 1);
+    const { data: found } = await bucket.list(contentId.data, { search: name, limit: 1 });
+    if (!found?.some((f) => f.name === name)) return { ok: false, error: "O ficheiro não chegou ao servidor. Tente enviar de novo." };
+  }
+  const { data: prev } = await svc.from("content_media").select("audio_path").eq("content_id", contentId.data).maybeSingle();
+  if (!prev) return { ok: false, error: "Guarde primeiro o conteúdo." };
+  const { error } = await svc.from("content_media").update({ audio_path: path }).eq("content_id", contentId.data);
+  if (error) return { ok: false, error: "Não foi possível guardar o áudio." };
+  if (prev.audio_path && prev.audio_path !== path) await bucket.remove([prev.audio_path]);
+  await audit(admin.id, path ? "content.audio_set" : "content.audio_remove", "content", contentId.data, null, { path });
+  revalidatePath(`/admin/conteudos/${contentId.data}`);
+  revalidatePath("/app", "layout");
+  return { ok: true, message: path ? "Áudio guardado. Este conteúdo já toca com o ecrã bloqueado." : "Áudio removido. O conteúdo volta a usar o YouTube." };
 }

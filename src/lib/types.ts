@@ -99,6 +99,8 @@ export interface PlayableTrack {
   isBinaural: boolean;
   coverUrl: string;
   videoId: string;
+  /** Áudio próprio (toca com o ecrã bloqueado). Sem ele, usa-se o YouTube. */
+  audioUrl: string | null;
   durationSeconds: number | null;
 }
 
