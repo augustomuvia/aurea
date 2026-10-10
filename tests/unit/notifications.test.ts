@@ -3,7 +3,7 @@ import { renderEmail, validateTemplate } from "@/lib/notifications/render";
 import { TEMPLATE_KEYS, TEMPLATES } from "@/lib/notifications/templates";
 import { buildVars, luandaDaysUntil, samplePayload } from "@/lib/notifications/vars";
 import { buildMime, encodeHeader } from "@/lib/notifications/mime";
-import { getEmailProvider, gmailProvider } from "@/lib/notifications/providers";
+import { cleanEnvValue, diagnoseGoogleEnv, getEmailProvider, gmailProvider } from "@/lib/notifications/providers";
 
 const opts = { siteUrl: "https://www.aurea-som.site", supportEmail: "suporte@aurea-som.site" };
 
@@ -132,5 +132,36 @@ describe("Gmail API", () => {
     expect(invalid).toMatchObject({ ok: false, permanent: true });
     const scope = await gmailProvider(env, fakeFetch({ send: () => Response.json({ error: { message: "Insufficient Permission" } }, { status: 403 }) }).f).send(msg);
     expect(scope).toMatchObject({ ok: false, permanent: false, config: true });
+  });
+
+  it("ignora espaços, quebras de linha e aspas coladas na Vercel", async () => {
+    expect(cleanEnvValue("  123-abc.apps.googleusercontent.com\n")).toBe("123-abc.apps.googleusercontent.com");
+    expect(cleanEnvValue('"gmail"')).toBe("gmail");
+    expect(cleanEnvValue("   ")).toBeUndefined();
+    const padded = { EMAIL_PROVIDER: " gmail\n", GOOGLE_CLIENT_ID: "id\n", GOOGLE_CLIENT_SECRET: " secret ", GOOGLE_REFRESH_TOKEN: "refresh\r\n" };
+    let body = "";
+    const f = (async (url: string, init: RequestInit) => {
+      if (url.includes("oauth2")) return (body = String(init.body)), Response.json({ access_token: "at", expires_in: 3600 });
+      return Response.json({ id: "x" });
+    }) as unknown as typeof fetch;
+    expect(getEmailProvider(padded).id).toBe("gmail");
+    await gmailProvider({ GOOGLE_CLIENT_ID: cleanEnvValue(padded.GOOGLE_CLIENT_ID), GOOGLE_CLIENT_SECRET: "secret", GOOGLE_REFRESH_TOKEN: "refresh" }, f).send(msg);
+    expect(new URLSearchParams(body).get("client_id")).toBe("id");
+  });
+
+  it("diagnóstico mostra o ID do cliente mas nunca a chave nem o token", () => {
+    const d = diagnoseGoogleEnv({
+      EMAIL_PROVIDER: "gmail",
+      GOOGLE_CLIENT_ID: "764-abc123.apps.googleusercontent.com\n",
+      GOOGLE_CLIENT_SECRET: "GOCSPX-supersecretvalue99",
+      GOOGLE_REFRESH_TOKEN: "1//0verysecrettoken",
+    });
+    expect(d.every((c) => c.ok)).toBe(true);
+    const text = JSON.stringify(d);
+    expect(text).toContain("764-abc123.apps.googleusercontent.com");
+    expect(text).toContain("espaços");
+    expect(text).not.toContain("supersecret");
+    expect(text).not.toContain("verysecrettoken");
+    expect(diagnoseGoogleEnv({ EMAIL_PROVIDER: "gmail", GOOGLE_CLIENT_ID: "GOCSPX-oops" })[1].ok).toBe(false);
   });
 });

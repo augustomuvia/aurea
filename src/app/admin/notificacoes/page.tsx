@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/admin";
 import { getIntegration } from "@/lib/notifications/server";
+import { diagnoseGoogleEnv } from "@/lib/notifications/providers";
 import { TEMPLATES } from "@/lib/notifications/templates";
 import { Badge, PageHeader, StatTile } from "@/components/ui/Glass";
 import { ActionForm } from "@/components/admin/ActionForm";
@@ -121,6 +122,18 @@ export default async function NotificationsAdmin() {
               Configure as variáveis {status.missing.join(", ")} na Vercel (ver docs/NOTIFICACOES.md) e faça um novo deploy.
             </p>
           )}
+          <details className="mt-6 border-t border-white/[0.07] pt-5 text-sm">
+            <summary className="cursor-pointer text-paper/80">Credenciais lidas pelo servidor</summary>
+            <p className="mt-2 text-xs text-mute">Valores tal como este deploy os recebe da Vercel. A chave secreta e o token nunca são mostrados.</p>
+            <ul className="mt-3 space-y-2">
+              {diagnoseGoogleEnv().map((c) => (
+                <li key={c.key}>
+                  <span className={c.ok ? "text-emerald-300" : "text-amber-200"}>{c.ok ? "✓" : "!"}</span> <code className="text-paper">{c.key}</code>
+                  <span className="block break-all pl-4 text-xs text-mute">{c.detail}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
         </Card>
 
         <Card title="Processar agora" description="Executa já o que o agendador diário faz: sincroniza expirações, cria os avisos do dia e envia a fila. É seguro repetir: nada é duplicado.">
