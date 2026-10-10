@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Instrument_Serif } from "next/font/google";
 import "./globals.css";
+import { resolveSiteUrl } from "@/lib/env";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
 const editorial = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-editorial", display: "swap" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(resolveSiteUrl()),
   title: { default: "AUREA — Encontre o seu estado de equilíbrio", template: "%s · AUREA" },
   description: "Experiências sonoras cuidadosamente selecionadas para concentração, descanso, meditação e relaxamento.",
   openGraph: { title: "AUREA", description: "Um espaço para desacelerar.", locale: "pt_AO", type: "website" },

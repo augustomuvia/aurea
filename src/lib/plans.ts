@@ -1,9 +1,10 @@
 import "server-only";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { serviceRoleKeyOrNull } from "@/lib/env";
 import type { Plan } from "@/lib/types";
 
 export async function getActivePlans(): Promise<Plan[]> {
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return [];
+  if (!serviceRoleKeyOrNull()) return [];
   const { data } = await createServiceClient().from("plans").select("*").eq("is_active", true).order("sort_order");
   return (data ?? []).map((p) => ({ ...p, amount_minor: Number(p.amount_minor) })) as Plan[];
 }

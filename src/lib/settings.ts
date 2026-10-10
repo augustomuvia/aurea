@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { createServiceClient } from "@/lib/supabase/admin";
+import { serviceRoleKeyOrNull } from "@/lib/env";
 
 export interface PlatformSettings {
   brand: { name: string; slogan: string; logo_url: string | null };
@@ -23,7 +24,7 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
 };
 
 export const getSettings = cache(async (): Promise<PlatformSettings> => {
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return DEFAULT_SETTINGS;
+  if (!serviceRoleKeyOrNull()) return DEFAULT_SETTINGS;
   try {
     const { data } = await createServiceClient().from("platform_settings").select("key, value");
     const out = structuredClone(DEFAULT_SETTINGS) as unknown as Record<string, Record<string, unknown>>;
