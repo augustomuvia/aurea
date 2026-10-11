@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { resolveSiteUrl } from "@/lib/env";
+import { MetaPixel } from "@/components/analytics/MetaPixel";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
 const editorial = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-editorial", display: "swap" });
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Saltar para o conteúdo
         </a>
         {children}
+        <MetaPixel />
       </body>
     </html>
   );
