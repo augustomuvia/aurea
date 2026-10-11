@@ -3,7 +3,7 @@ import { META_PIXEL_ID, pixelSkipped } from "@/lib/meta-pixel";
 
 describe("meta pixel", () => {
   it("usa o pixel da conta por omissão", () => {
-    expect(META_PIXEL_ID).toBe("976644591233887");
+    expect(META_PIXEL_ID).toBe("950520914582617");
   });
 
   it("não mede admin, e-book nem a página offline", () => {

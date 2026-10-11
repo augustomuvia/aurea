@@ -3,7 +3,7 @@
  * para os anúncios otimizarem para quem compra. Pode ser trocado com NEXT_PUBLIC_META_PIXEL_ID;
  * "off" desliga-o.
  */
-const DEFAULT_PIXEL_ID = "976644591233887";
+const DEFAULT_PIXEL_ID = "950520914582617";
 
 export const META_PIXEL_ID = (() => {
   const v = process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim();
