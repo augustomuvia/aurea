@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
+import { parseUtmCookie, UTM_COOKIE, withUtm } from "@/lib/utm";
 import { ExternalLink, ShieldCheck, Smartphone } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getActivePlans, getPlanByCode } from "@/lib/plans";
@@ -18,6 +20,8 @@ export default async function CheckoutPage({ params }: { params: Promise<{ plano
   const [plan, plans, view] = await Promise.all([getPlanByCode(plano), getActivePlans(), getSubscriptionView(user.id)]);
   if (!plan) notFound();
   const savings = computeSavings(plan, basePlan(plans) ?? plan);
+  // Leva a origem do anúncio até à Kursinha (rastreio de vendas por campanha).
+  const checkoutHref = plan.checkout_url ? withUtm(plan.checkout_url, parseUtmCookie((await cookies()).get(UTM_COOKIE)?.value)) : null;
 
   return (
     <section className="mx-auto max-w-4xl px-4 pb-16 pt-32 sm:px-6">
@@ -51,7 +55,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ plano
               <p className="mt-1 break-all font-medium text-paper">{user.email}</p>
             </div>
             <a
-              href={plan.checkout_url}
+              href={checkoutHref ?? plan.checkout_url}
               target="_blank"
               rel="noopener noreferrer"
               className={buttonClass("gold", "lg", "mt-6 w-full")}
