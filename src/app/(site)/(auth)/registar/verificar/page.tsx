@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { MailCheck } from "lucide-react";
 import { AuthShell } from "@/components/site/AuthShell";
 import { ResendForm } from "./ResendForm";
+import { PixelEvent } from "@/components/analytics/MetaPixel";
 
 export const metadata: Metadata = { title: "Verifique o seu e-mail" };
 
@@ -9,6 +10,7 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
   const { email = "" } = await searchParams;
   return (
     <AuthShell title="Verifique o seu e-mail">
+      <PixelEvent event="CompleteRegistration" />
       <div className="text-center">
         <MailCheck className="mx-auto h-8 w-8 text-gold" strokeWidth={1.4} />
         <p className="mt-4 text-sm leading-relaxed text-paper/75">

@@ -16,11 +16,12 @@ export default async function PrivacyPage() {
         <li>Utilização: favoritos, histórico e posição de reprodução, preferências de categorias.</li>
         <li>Suporte: mensagens enviadas através do formulário.</li>
         <li>Técnicos: cookies de sessão estritamente necessários e registos de segurança.</li>
+        <li>Publicidade: o pixel da Meta regista páginas visitadas, o registo de conta e o início do pagamento, para medir os nossos anúncios no Facebook e Instagram. Guardamos também a origem do anúncio (parâmetros UTM) durante 30 dias para saber que campanha trouxe cada compra.</li>
       </ul>
       <h2>Finalidades</h2>
       <p>Prestar o serviço, gerir assinaturas e pagamentos, prevenir fraude e abuso, responder a pedidos de suporte e cumprir obrigações legais. Comunicações de novidades e estatísticas de utilização só com o seu consentimento, que pode retirar a qualquer momento nas definições da conta.</p>
       <h2>Partilha</h2>
-      <p>Utilizamos prestadores de serviços para alojamento (Vercel), base de dados e autenticação (Supabase) e, quando configurado, envio de e-mail. Ao reproduzir um conteúdo, o YouTube (Google) recebe dados técnicos de acordo com a sua própria política de privacidade; utilizamos o modo de privacidade reforçada do YouTube.</p>
+      <p>Utilizamos prestadores de serviços para alojamento (Vercel), base de dados e autenticação (Supabase) e, quando configurado, envio de e-mail. A Meta (Facebook/Instagram) recebe os dados técnicos do pixel descritos acima, de acordo com a sua própria política de privacidade. Ao reproduzir um conteúdo, o YouTube (Google) recebe dados técnicos de acordo com a sua própria política de privacidade; utilizamos o modo de privacidade reforçada do YouTube.</p>
       <h2>Conservação</h2>
       <p>Os dados da conta são conservados enquanto a conta estiver ativa. Ao encerrar a conta, eliminamos o perfil, favoritos, histórico e preferências. Os registos de pagamento são conservados pelo prazo legal aplicável, sem ligação ao perfil.</p>
       <h2>Os seus direitos</h2>

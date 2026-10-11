@@ -11,6 +11,7 @@ import { getSubscriptionView } from "@/lib/subscription";
 import { formatDate } from "@/lib/format";
 import { CreateOrderForm } from "./CreateOrderForm";
 import { buttonClass } from "@/components/ui/Button";
+import { PixelEvent } from "@/components/analytics/MetaPixel";
 
 export const metadata: Metadata = { title: "Pagamento" };
 
@@ -25,6 +26,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ plano
 
   return (
     <section className="mx-auto max-w-4xl px-4 pb-16 pt-32 sm:px-6">
+      <PixelEvent event="InitiateCheckout" params={{ content_name: plan.name, content_ids: [plan.code], content_type: "product", num_items: 1 }} />
       <Link href="/planos" className="text-sm text-mute hover:text-paper">← Planos</Link>
       <h1 className="mt-4 font-serif text-4xl text-paper sm:text-5xl animate-rise">Confirmar plano</h1>
       <div className="mt-8 grid gap-5 md:grid-cols-[1.2fr_1fr]">
